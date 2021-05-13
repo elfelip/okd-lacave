@@ -1,0 +1,17 @@
+kubeconfig: ~/okd/auth/kubeconfig
+cluster_domain: kube.lacave.info
+cluster_name: kubelacave
+router_canonical_hostname: "apps.{{ cluster_name }}.{{ cluster_domain }}"
+rook_operator_version: v1.6.2
+ceph_version: v15.2.11
+rook_ceph_monitoring_enabled: 'true'
+rook_ceph_dashboard_url: "cephdashboard.{{ router_canonical_hostname }}"
+rook_ceph_clusters:
+  - cluster_name: rook-ceph-fast
+    namespace: rook-ceph-fast
+    device_filter: /dev/fastvg/cephlv
+    storageclass_name: rook-ceph-block-fast
+  - cluster_name: rook-ceph-slow
+    namespace: rook-ceph-slow
+    device_filter: /dev/slowvg/cephlv
+    storageclass_name: rook-ceph-block-slow

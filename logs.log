@@ -1,0 +1,28 @@
+Log file created at: 2021/05/07 11:55:32
+Running on machine: bilbo
+Binary: Built with gc go1.16.3 for linux/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0507 11:55:32.262996  182615 warnings.go:70] apiextensions.k8s.io/v1beta1 CustomResourceDefinition is deprecated in v1.16+, unavailable in v1.22+; use apiextensions.k8s.io/v1 CustomResourceDefinition
+I0507 11:55:32.291720  182615 tenant-create.go:71] create tenant command started
+Log file created at: 2021/05/07 11:56:55
+Running on machine: bilbo
+Binary: Built with gc go1.16.3 for linux/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0507 11:56:55.807221  182689 proxy.go:68] proxy command started
+Log file created at: 2021/05/07 13:07:13
+Running on machine: bilbo
+Binary: Built with gc go1.16.3 for linux/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0507 13:07:13.714697  184157 proxy.go:68] proxy command started
+W0507 13:07:13.760190  184157 proxy.go:71] serviceaccounts "console-sa" not found
+Log file created at: 2021/05/07 13:08:56
+Running on machine: bilbo
+Binary: Built with gc go1.16.3 for linux/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0507 13:08:56.541562  184277 warnings.go:70] apiextensions.k8s.io/v1beta1 CustomResourceDefinition is deprecated in v1.16+, unavailable in v1.22+; use apiextensions.k8s.io/v1 CustomResourceDefinition
+Log file created at: 2021/05/07 13:09:30
+Running on machine: bilbo
+Binary: Built with gc go1.16.3 for linux/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0507 13:09:30.572608  184303 warnings.go:70] apiextensions.k8s.io/v1beta1 CustomResourceDefinition is deprecated in v1.16+, unavailable in v1.22+; use apiextensions.k8s.io/v1 CustomResourceDefinition
+I0507 13:09:30.600677  184303 tenant-info.go:62] info tenant command started

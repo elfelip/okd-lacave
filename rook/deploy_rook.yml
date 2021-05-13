@@ -1,0 +1,97 @@
+- hosts: okd_management
+  vars:
+    manifest_dir: manifest
+  tasks:
+  - name: Créer le répertoire pour entreposer les manifests
+    file:
+      dest: "{{ manifest_dir }}"
+      state: directory
+  - name: Installer les packages Python
+    pip:
+      name:
+      - kubernetes==11.0.0
+      - openshift
+      extra_args: --user
+      state: present
+  - name: Déployer les éléments crds de rook
+    k8s:
+      #kubeconfig: "{{ kubeconfig }}"
+      definition: "{{ lookup('file','crds.yaml') }}"
+      state: present
+  - name: Déployer les éléments communs de rook
+    k8s:
+      definition: "{{ lookup('file','common.yaml') }}"
+      state: present
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: operator-openshift.yaml.j2
+      dest: "{{ manifest_dir }}/rook-operator-manifest.yaml"
+  - name: Installer l'opérateur rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','operator-openshift.yaml.j2') }}"
+    register: ceph_operator_install
+  - name: Attendre 5 minutes que l'opérateur soit démarré
+    pause:
+      minutes: 5
+    when: ceph_operator_install is defined and ceph_operator_install.changed is defined and ceph_operator_install.changed
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: cluster.yaml.j2
+      dest: "{{ manifest_dir }}/rook-cluster-manifest.yaml"
+  - name: Installer le cluster rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','cluster.yaml.j2') }}"
+    register: ceph_cluster_install
+  - name: Attendre 15 minutes que le cluster soit démarré
+    pause:
+      minutes: 15
+    when: ceph_cluster_install is defined and ceph_cluster_install.changed is defined and ceph_cluster_install.changed
+  - name: Obtenir le mot de passe admin du Dashboard ceph
+    shell: 
+      cmd: |
+        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d
+    register: rook_ceph_dashboard_password_out
+  - name: Extraire le mot de passe
+    set_fact:
+      rook_ceph_dashboard_password: "{{ rook_ceph_dashboard_password_out.stdout }}"
+  #- name: Générer le manifest dans les artefacts
+  #  local_action:
+  #    module: template
+  #    src: dashboard-ingress-https.yaml.j2
+  #    dest: "{{ manifest_dir }}/rook-dashboard-route-manifest.yaml"
+  #- name: Installer l'ingress pour le dashboard rook-ceph
+  #  k8s:                                                                                                                                                                                                             
+  #    state: present
+  #    definition: "{{ lookup('template','dashboard-route-https.yaml.j2') }}"
+  #  when: rook_ceph_dashboard_url is defined
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: pool.yaml.j2
+      dest: "{{ manifest_dir }}/rook-pool-manifest.yaml"
+  - name: Créer le pool principal rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','pool.yaml.j2') }}"
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: storageclass.yaml.j2
+      dest: "{{ manifest_dir }}/rook-storageclass-manifest.yaml"
+  - name: Créer le storage class rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','storageclass.yaml.j2') }}"
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: toolbox.yaml.j2
+      dest: "{{ manifest_dir }}/rook-toolbox-manifest.yaml"
+  - name: Déployer le toolbox pour rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','toolbox.yaml.j2') }}"

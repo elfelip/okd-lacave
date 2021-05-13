@@ -300,14 +300,14 @@ La structure est la suivante pour nos 4 machines:
         LACLERSAPUBLIQUE
     storage:
     files:
-        - path: /etc/NetworkManager/system-connections/enp3s0.nmconnection
+        - path: /etc/NetworkManager/system-connections/ens3.nmconnection
         mode: 0600
         overwrite: true
         contents:
             inline: |
             [connection]
             type=ethernet
-            interface-name=enp3s0
+            interface-name=ens3
 
             [ipv4]
             method=manual
@@ -535,7 +535,155 @@ Pour l'ajouter dans Ubuntu, faire els étapes suivantes:
         sudo update-ca-certificates
 
     
+## Gestion des noeuds
+
+### Ajouter des noeuds de travail (worker nodes)
+Source: https://docs.okd.io/latest/post_installation_configuration/node-tasks.html
+Lors de la création des fichier ignition, un fichier worker.ign a été créé.
+On va l'utiliser avec PXE pour démarrer l'installation des nouveaux noeuds.
+
+La première étape est de configurer les fichiers PXE pour les nouveaux noeuds. Par exemple, la l'adresse MAC de la nouvelle machine kube05 est aa:aa:aa:aa:ad, on doit créer le fichier suivant:
+
+On doit ensuite copier le fichier worker.ign vers /var/www/html/okd/kube05.ign et y insérer les lignes suivantes:
+
+Répéter ces étapes pour chacun des noeuds à ajouter.
+
+Un fois les noeuds démarré, l'installation de fait automatiquement.
+
+Pour accepter les nouveaux noeuds dans le cluster, on doit accepter les requètes de signature de certifcats.
+Premièrement, on peut obtenir la liste des requête avec la commande suivante:
+
+    oc get csr
+
+On accepte les requêtes avec la commande suivantes:
+
+    oc adm certificate approve id_du_certificat_obtenu_par_la_commande_precedente
+
+Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien été ajoutés au cluster:
+
+    oc get nodes
+    NAME     STATUS   ROLES           AGE     VERSION
+    kube01   Ready    master,worker   4d17h   v1.20.0+7d0a2b2-1058
+    kube02   Ready    master,worker   4d17h   v1.20.0+7d0a2b2-1058
+    kube03   Ready    master,worker   4d17h   v1.20.0+7d0a2b2-1058
+    kube05   Ready    worker          16h     v1.20.0+7d0a2b2-1058
+    kube06   Ready    worker          16h     v1.20.0+7d0a2b2-1058
+    kube07   Ready    worker          15h     v1.20.0+7d0a2b2-1058
+
+
+
 ## Stockage
+
+### Création des volumes logiques
+Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hébergent les données du cluster.
+
+#### Création des groupes de volumes (VG)
+La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires.
+Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg. 
+
+    ssh -i keys/kubelacave-key core@kube01 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube02 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube03 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube05 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate slowvg /dev/sdb"
+
+Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc
+Pour les disques SSD:
+
+    ssh -i keys/kubelacave-key core@kube05 "sudo vgcreate fastvg /dev/sdc"
+    ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate fastvg /dev/sdc"
+    ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate fastvg /dev/sdc"
+    
+#### Création des volumes pour rook-ceph
+On peut allouer 100Go pour le stockage Ceph. pour ce faire on va gréer le volume logique cephlv:
+
+    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube05 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube06 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube07 "sudo lvcreate -L 100G -n cephlv slowvg"
+    ssh -i keys/kubelacave-key core@kube05 "sudo lvcreate -L 100G -n cephlv fastvg"
+    ssh -i keys/kubelacave-key core@kube06 "sudo lvcreate -L 100G -n cephlv fastvg"
+    ssh -i keys/kubelacave-key core@kube07 "sudo lvcreate -L 100G -n cephlv fastvg"
+
+#### Minio
+
+Installer le gestionnaire de plugin krew pour kubectl:
+
+    (set -x; cd "$(mktemp -d)" &&   OS="$(uname | tr '[:upper:]' '[:lower:]')" &&   ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" &&   curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/krew.tar.gz" &&   tar zxvf krew.tar.gz &&   KREW=./krew-"${OS}_${ARCH}" &&   "$KREW" install krew;)
+
+Installer le plugin minio
+
+    kubectl krew install minio
+
+Créer le projet minio-operator
+
+    oc new-project minio-operator --description="Minio Storage Operator" --display-name="Minio Operator"
+
+Configurer la sécurité: https://github.com/minio/operator/issues/289
+
+    oc adm policy add-scc-to-user anyuid -z minio-operator -n minio-operator
+
+Déployer l'opérateur:
+
+    kubectl minio init -n minio-operator
+
+Accéder à la console:
+
+   kubectl minio proxy -n minio-operator
+
+L'adresse de la console est affiché lors du lancement du proxy.
+
+Créer les filesystem pour minio dans slowvg:
+
+    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
+    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
+    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mkfs.xfs /dev/slowvg/miniolv1"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mkfs.xfs /dev/slowvg/miniolv1"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mkfs.xfs /dev/slowvg/miniolv1"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mkdir /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mkdir /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mkdir /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube01 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube02 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube03 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mount /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mount /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mount /mnt/minio1"
+    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
+    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
+    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mkfs.xfs /dev/slowvg/miniolv2"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mkfs.xfs /dev/slowvg/miniolv2"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mkfs.xfs /dev/slowvg/miniolv2"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mkdir /mnt/minio2"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mkdir /mnt/minio2"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mkdir /mnt/minio2"
+    ssh -i keys/kubelacave-key core@kube01 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube02 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube03 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
+    ssh -i keys/kubelacave-key core@kube01 "sudo mount /mnt/minio2"
+    ssh -i keys/kubelacave-key core@kube02 "sudo mount /mnt/minio2"
+    ssh -i keys/kubelacave-key core@kube03 "sudo mount /mnt/minio2"
+
+Créer la classe de stockage et les volumnes persistants
+
+    kubectl apply -f minio/miniostorage.yaml
+
+Création d'un tenent
+
+    Créer le namespace pour le tenant:
+        oc new-project minio-tenant --description="Minio Storage Tenant" --display-name="Minio Tenant"
+    Créer le Tenant
+        kubectl minio tenant create minio-tenant --servers 3 --volumes 6 --capacity 600Gi --storage-class minio-local-storage --namespace minio-tenant
+    Créer un proxy pour accéder à la console du tenant:
+        kubectl port-forward svc/minio-tenant-console -n minio-tenant 9443:9443
+    On peut accéder à la console par l'URL https://localhost:9443
+    Obtenir le crédentiel pour s'authentifier à la console:
+        echo $(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_ACCESS_KEY}' | base64 -d):$(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_SECRET_KEY}' | base64 -d)
 
 ## Activer le registre d'image
 
