@@ -3,12 +3,13 @@
 # different hosts are required in this example.
 #  kubectl create -f pool.yaml
 #################################################################################################################
-
+{% for ceph_cluster in rook_ceph_clusters %}
+---
 apiVersion: ceph.rook.io/v1
 kind: CephBlockPool
 metadata:
   name: replicapool
-  namespace: rook-ceph # namespace:cluster
+  namespace: {{ ceph_cluster.namespace }} # namespace:cluster
 spec:
   # The failure domain will spread the replicas of the data across different failure zones
   failureDomain: host
@@ -62,3 +63,4 @@ spec:
   # A key/value list of annotations
   annotations:
   #  key: value
+{% endfor %}

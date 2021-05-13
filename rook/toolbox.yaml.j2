@@ -1,8 +1,10 @@
+{% for ceph_cluster in rook_ceph_clusters %}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rook-ceph-tools
-  namespace: rook-ceph
+  namespace: {{ ceph_cluster.namespace }}
   labels:
     app: rook-ceph-tools
 spec:
@@ -52,3 +54,4 @@ spec:
           operator: "Exists"
           effect: "NoExecute"
           tolerationSeconds: 5
+{% endfor %}
