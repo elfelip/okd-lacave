@@ -9,9 +9,47 @@ rook_ceph_dashboard_url: "cephdashboard.{{ router_canonical_hostname }}"
 rook_ceph_clusters:
   - cluster_name: rook-ceph-fast
     namespace: rook-ceph-fast
-    device_filter: /dev/fastvg/cephlv
+    device_filter: sdc
+    #nodes:
+    #  - name: kube05
+    #    logical_devices:
+    #    - vg: fastvg
+    #      lvol: cephlv
+    #  - name: kube06
+    #    logical_devices:
+    #    - vg: fastvg
+    #      lvol: cephlv
+    #  - name: kube07
+    #    logical_devices:
+    #    - vg: fastvg
+    #      lvol: cephlv
     storageclass_name: rook-ceph-block-fast
   - cluster_name: rook-ceph-slow
     namespace: rook-ceph-slow
-    device_filter: /dev/slowvg/cephlv
+    device_filter: sdb
+    #nodes:
+    #  - name: kube01
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
+    #  - name: kube02
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
+    #  - name: kube03
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
+    #  - name: kube05
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
+    #  - name: kube06
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
+    #  - name: kube07
+    #    logical_devices:
+    #    - vg: slowvg
+    #      lvol: cephlv
     storageclass_name: rook-ceph-block-slow

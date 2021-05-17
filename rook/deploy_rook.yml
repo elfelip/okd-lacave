@@ -18,9 +18,14 @@
       #kubeconfig: "{{ kubeconfig }}"
       definition: "{{ lookup('file','crds.yaml') }}"
       state: present
+  - name: Générer le manifest dans les artefacts
+    local_action:
+      module: template
+      src: common.yaml.j2
+      dest: "{{ manifest_dir }}/rook-common-manifest.yaml"
   - name: Déployer les éléments communs de rook
     k8s:
-      definition: "{{ lookup('file','common.yaml') }}"
+      definition: "{{ lookup('template','common.yaml.j2') }}"
       state: present
   - name: Générer le manifest dans les artefacts
     local_action:

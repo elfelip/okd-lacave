@@ -5,7 +5,7 @@ kind: StorageClass
 metadata:
    name: {{ ceph_cluster.storageclass_name }}
 # Change "rook-ceph" provisioner prefix to match the operator namespace if needed
-provisioner: rook-ceph.rbd.csi.ceph.com
+provisioner: {{ ceph_cluster.namespace }}.rbd.csi.ceph.com
 parameters:
     # clusterID is the namespace where the rook cluster is running
     clusterID: {{ ceph_cluster.cluster_name }}

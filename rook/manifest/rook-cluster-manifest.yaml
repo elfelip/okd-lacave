@@ -9,12 +9,6 @@
 #################################################################################################################
 
 ---
-# Namespace where the operator and other rook resources are created
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: rook-ceph-fast
----
 apiVersion: ceph.rook.io/v1
 kind: CephCluster
 metadata:
@@ -36,7 +30,7 @@ spec:
   # The path on the host where configuration files will be persisted. Must be specified.
   # Important: if you reinstall the cluster, make sure you delete this directory from each host or else the mons will fail to start on the new cluster.
   # In Minikube, the '/data' directory is configured to persist across reboots. Use "/data/rook" in Minikube environment.
-  dataDirHostPath: /var/lib/rook
+  dataDirHostPath: /var/lib/rook-ceph-fast
   # Whether or not upgrade should continue even if a check fails
   # This means Ceph's status could be degraded and we don't recommend upgrading but you might decide otherwise
   # Use at your OWN risk
@@ -84,7 +78,7 @@ spec:
     # If you have a single rook-ceph cluster, set the rulesNamespace to the same namespace as the cluster or keep it empty.
     # If you have multiple rook-ceph clusters in the same k8s cluster, choose the same namespace (ideally, namespace with prometheus
     # deployed) to set rulesNamespace for all the clusters. Otherwise, you will get duplicate alerts with multiple alert definitions.
-    rulesNamespace: rook-ceph
+    rulesNamespace: rook-ceph-fast
   network:
     # enable host networking
     #provider: host
@@ -210,8 +204,9 @@ spec:
 #    mgr: rook-ceph-mgr-priority-class
   storage: # cluster level storage configuration and selection
     useAllNodes: true
+
     useAllDevices: false
-    deviceFilter: /dev/fastvg/cephlv
+    deviceFilter: sdc
     config:
       # crushRoot: "custom-root" # specify a non-default root label for the CRUSH map
       # metadataDevice: "md0" # specify a non-rotational storage so ceph-volume will use it as block db device of bluestore.
@@ -273,12 +268,6 @@ spec:
       osd:
         disabled: false
 ---
-# Namespace where the operator and other rook resources are created
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: rook-ceph-slow
----
 apiVersion: ceph.rook.io/v1
 kind: CephCluster
 metadata:
@@ -300,7 +289,7 @@ spec:
   # The path on the host where configuration files will be persisted. Must be specified.
   # Important: if you reinstall the cluster, make sure you delete this directory from each host or else the mons will fail to start on the new cluster.
   # In Minikube, the '/data' directory is configured to persist across reboots. Use "/data/rook" in Minikube environment.
-  dataDirHostPath: /var/lib/rook
+  dataDirHostPath: /var/lib/rook-ceph-slow
   # Whether or not upgrade should continue even if a check fails
   # This means Ceph's status could be degraded and we don't recommend upgrading but you might decide otherwise
   # Use at your OWN risk
@@ -348,7 +337,7 @@ spec:
     # If you have a single rook-ceph cluster, set the rulesNamespace to the same namespace as the cluster or keep it empty.
     # If you have multiple rook-ceph clusters in the same k8s cluster, choose the same namespace (ideally, namespace with prometheus
     # deployed) to set rulesNamespace for all the clusters. Otherwise, you will get duplicate alerts with multiple alert definitions.
-    rulesNamespace: rook-ceph
+    rulesNamespace: rook-ceph-slow
   network:
     # enable host networking
     #provider: host
@@ -474,8 +463,9 @@ spec:
 #    mgr: rook-ceph-mgr-priority-class
   storage: # cluster level storage configuration and selection
     useAllNodes: true
+
     useAllDevices: false
-    deviceFilter: /dev/slowvg/cephlv
+    deviceFilter: sdb
     config:
       # crushRoot: "custom-root" # specify a non-default root label for the CRUSH map
       # metadataDevice: "md0" # specify a non-rotational storage so ceph-volume will use it as block db device of bluestore.

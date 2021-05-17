@@ -45,10 +45,12 @@ users:
   # A user needs to be added for each rook service account.
   # This assumes running in the default sample "rook-ceph" namespace.
   # If other namespaces or service accounts are configured, they need to be updated here.
-  - system:serviceaccount:rook-ceph:rook-ceph-system # serviceaccount:namespace:operator
-  - system:serviceaccount:rook-ceph:default # serviceaccount:namespace:cluster
-  - system:serviceaccount:rook-ceph:rook-ceph-mgr # serviceaccount:namespace:cluster
-  - system:serviceaccount:rook-ceph:rook-ceph-osd # serviceaccount:namespace:cluster
+{% for ceph_cluster in rook_ceph_clusters %}
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-ceph-system # serviceaccount:namespace:operator
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:default # serviceaccount:namespace:cluster
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-ceph-mgr # serviceaccount:namespace:cluster
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-ceph-osd # serviceaccount:namespace:cluster
+{% endfor %}
 ---
 # scc for the CSI driver
 kind: SecurityContextConstraints
@@ -82,10 +84,12 @@ users:
   # A user needs to be added for each rook service account.
   # This assumes running in the default sample "rook-ceph" namespace.
   # If other namespaces or service accounts are configured, they need to be updated here.
-  - system:serviceaccount:rook-ceph:rook-csi-rbd-plugin-sa # serviceaccount:namespace:operator
-  - system:serviceaccount:rook-ceph:rook-csi-rbd-provisioner-sa # serviceaccount:namespace:operator
-  - system:serviceaccount:rook-ceph:rook-csi-cephfs-plugin-sa # serviceaccount:namespace:operator
-  - system:serviceaccount:rook-ceph:rook-csi-cephfs-provisioner-sa # serviceaccount:namespace:operator
+{% for ceph_cluster in rook_ceph_clusters %}
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-csi-rbd-plugin-sa # serviceaccount:namespace:operator
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-csi-rbd-provisioner-sa # serviceaccount:namespace:operator
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-csi-cephfs-plugin-sa # serviceaccount:namespace:operator
+  - system:serviceaccount:{{ ceph_cluster.namespace }}:rook-csi-cephfs-provisioner-sa # serviceaccount:namespace:operator
+{% endfor %}
 {% for ceph_cluster in rook_ceph_clusters %}
 ---
 # Rook Ceph Operator Config

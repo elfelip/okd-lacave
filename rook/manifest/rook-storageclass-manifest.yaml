@@ -4,7 +4,7 @@ kind: StorageClass
 metadata:
    name: rook-ceph-block-fast
 # Change "rook-ceph" provisioner prefix to match the operator namespace if needed
-provisioner: rook-ceph.rbd.csi.ceph.com
+provisioner: rook-ceph-fast.rbd.csi.ceph.com
 parameters:
     # clusterID is the namespace where the rook cluster is running
     clusterID: rook-ceph-fast
@@ -19,9 +19,9 @@ parameters:
 
     # The secrets contain Ceph admin credentials.
     csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-    csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+    csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph-fast
     csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-    csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+    csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph-fast
 
     # Specify the filesystem type of the volume. If not specified, csi-provisioner
     # will set default as `ext4`.
@@ -35,7 +35,7 @@ kind: StorageClass
 metadata:
    name: rook-ceph-block-slow
 # Change "rook-ceph" provisioner prefix to match the operator namespace if needed
-provisioner: rook-ceph.rbd.csi.ceph.com
+provisioner: rook-ceph-slow.rbd.csi.ceph.com
 parameters:
     # clusterID is the namespace where the rook cluster is running
     clusterID: rook-ceph-slow
@@ -50,9 +50,9 @@ parameters:
 
     # The secrets contain Ceph admin credentials.
     csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-    csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+    csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph-slow
     csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-    csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+    csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph-slow
 
     # Specify the filesystem type of the volume. If not specified, csi-provisioner
     # will set default as `ext4`.
