@@ -8,6 +8,9 @@ Pour déployer un cluster a trois noeuds on a besoin de 4 machines:
     kube02: master1
     kube03: master2
     kube04: bootstrap
+    kube05: worker0
+    kube06: worker1
+    kube07: worker2
 
 La machine bootstrap est temporaire, c'est celle qui va déployer le cluster sur les autres noeuds.
 
@@ -16,7 +19,7 @@ Voici les infpormations pour ce cluster:
     Zone DNS pour le cluster: kube.lacave.info
     Nom du cluster: kubelacave
 ## PXE Boot
-Il est possible de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pcelinux sous Ubuntu 20.04.
+Avec OKD, il est suggéré de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pxelinux sous Ubuntu 20.04.
 
 Pour ce document, on utilise les adresses MAC suivant. Les ajuster en fonction des adresses MAC de vos machines:
 
@@ -574,12 +577,84 @@ Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien �
 
 ## Stockage
 
-### Création des volumes logiques
+Chaque noeuds possède du stockage local. Pour faciliter son utilisation, on installe des approvisionneurs de stockage.
+
+### OpenEBS
+Le stockage local des noeuds est géré avec OpenEBS: https://docs.openebs.io/docs.
+Ce type de stockage n'est, en général, pas redondant. Les StatefulSet qui utilisent ce stockage doivent donc être redontant.
+
+#### Installation
+Avec Openshift, on peut installer l'opérateur à partir de la console: Operateor -> Operator Hub
+
+Avec OKD, on doit utiliser HELM: https://docs.openebs.io/docs/next/installation.html
+
+    helm repo add openebs https://openebs.github.io/charts
+    helm repo update
+    helm install openebs --namespace kube-system openebs/openebs
+
+    NAME: openebs
+    LAST DEPLOYED: Mon Sep 20 14:18:31 2021
+    NAMESPACE: kube-system
+    STATUS: deployed
+    REVISION: 1
+    TEST SUITE: None
+    NOTES:
+    The OpenEBS has been installed. Check its status by running:
+    $ kubectl get pods -n kube-system
+
+    For dynamically creating OpenEBS Volumes, you can either create a new StorageClass or
+    use one of the default storage classes provided by OpenEBS.
+
+    Use `kubectl get sc` to see the list of installed OpenEBS StorageClasses. A sample
+    PVC spec using `openebs-jiva-default` StorageClass is given below:"
+
+    ---
+    kind: PersistentVolumeClaim
+    apiVersion: v1
+    metadata:
+    name: demo-vol-claim
+    spec:
+    storageClassName: openebs-jiva-default
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+        storage: 5G
+    ---
+
+    Please note that, OpenEBS uses iSCSI for connecting applications with the
+    OpenEBS Volumes and your nodes should have the iSCSI initiator installed.
+
+    For more information, visit our Slack at https://openebs.io/community or view the documentation online at http://docs.openebs.io/.
+    J'ai utilisé l'installation par défaut le l'opérateur en incluant CStor et tout est déployé dans le namespace openebs.
+Les approvisionneurs installés sont:
+
+    - Device
+    - Host path
+    - Jiva
+
+L'installation créé par défaut 4 classes de stockage:
+
+    kubectl get storageclass
+    NAME                        PROVISIONER                                                RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+    openebs-device              openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
+    openebs-hostpath            openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
+    openebs-jiva-default        openebs.io/provisioner-iscsi                               Delete          Immediate              false                  98d
+    openebs-snapshot-promoter   volumesnapshot.external-storage.k8s.io/snapshot-promoter   Delete          Immediate 
+
+La classe openebs-hostpath peut être utilisée telle quelle. Les données sont alors déposé dans le répertoire /var/openebs/local du rootvg des noeuds.
+
+Pour pouvoir utiliser LVM, on installe le provisionneur LVM avec la commande suivante:
+
+    kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
+
+La documentation pour LVM: https://github.com/openebs/lvm-localpv
+
+### Création des groupes de volumes pour OpenEBS
+
 Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hébergent les données du cluster.
 
-#### Création des groupes de volumes (VG)
-La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires.
-Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg. 
+La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires. Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg.
 
     ssh -i keys/kubelacave-key core@kube01 "sudo vgcreate slowvg /dev/sdb"
     ssh -i keys/kubelacave-key core@kube02 "sudo vgcreate slowvg /dev/sdb"
@@ -588,27 +663,37 @@ Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxi
     ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate slowvg /dev/sdb"
     ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate slowvg /dev/sdb"
 
-Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc
-Pour les disques SSD:
+Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les disques SSD:
 
     ssh -i keys/kubelacave-key core@kube05 "sudo vgcreate fastvg /dev/sdc"
     ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate fastvg /dev/sdc"
     ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate fastvg /dev/sdc"
-    
-#### Création des volumes pour rook-ceph
-On peut allouer 100Go pour le stockage Ceph. pour ce faire on va gréer le volume logique cephlv:
 
-    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube05 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube06 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube07 "sudo lvcreate -L 100G -n cephlv slowvg"
-    ssh -i keys/kubelacave-key core@kube05 "sudo lvcreate -L 100G -n cephlv fastvg"
-    ssh -i keys/kubelacave-key core@kube06 "sudo lvcreate -L 100G -n cephlv fastvg"
-    ssh -i keys/kubelacave-key core@kube07 "sudo lvcreate -L 100G -n cephlv fastvg"
 
-#### Minio
+On créé ensuite 2 classes de stockage pour gérer le stockage rapide de type SSD et lent de type SATA de amnière différente.
+Voici les classes à créer
+
+    openebs-lvm-localpv-fast: openebs/storage-class-fast.yaml
+    openebs-lvm-localpv-slow: openebs/storage-class-slow.yaml
+
+Pour les appliquer:
+
+    kubectl create -f openebs/storage-class-fast.yaml
+    kubectl create -f openebs/storage-class-slow.yaml
+
+Pour tester, on peut déployer les pods exemples inclus dans le projetL
+
+    kubectl create -f openebs/exemple-stockage.yaml
+
+On peut les supprimer avec la commande suivante:
+
+    kubectl delete -f openebs/exemple-stockage.yaml
+
+Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire les volumes logiques de sur les hôtes.
+
+Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
+
+### Minio
 
 Installer le gestionnaire de plugin krew pour kubectl:
 
@@ -636,44 +721,11 @@ Accéder à la console:
 
 L'adresse de la console est affiché lors du lancement du proxy.
 
-Créer les filesystem pour minio dans slowvg:
-
-    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
-    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
-    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -Wy --yes -L 100G -n miniolv1 slowvg"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mkfs.xfs /dev/slowvg/miniolv1"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mkfs.xfs /dev/slowvg/miniolv1"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mkfs.xfs /dev/slowvg/miniolv1"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mkdir /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mkdir /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mkdir /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube01 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube02 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube03 "echo '/dev/slowvg/miniolv1 /mnt/minio1 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mount /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mount /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mount /mnt/minio1"
-    ssh -i keys/kubelacave-key core@kube01 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
-    ssh -i keys/kubelacave-key core@kube02 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
-    ssh -i keys/kubelacave-key core@kube03 "sudo lvcreate -Wy --yes -L 100G -n miniolv2 slowvg"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mkfs.xfs /dev/slowvg/miniolv2"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mkfs.xfs /dev/slowvg/miniolv2"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mkfs.xfs /dev/slowvg/miniolv2"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mkdir /mnt/minio2"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mkdir /mnt/minio2"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mkdir /mnt/minio2"
-    ssh -i keys/kubelacave-key core@kube01 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube02 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube03 "echo '/dev/slowvg/miniolv2 /mnt/minio2 xfs defaults 0 2' | sudo tee -a /etc/fstab > /dev/null"
-    ssh -i keys/kubelacave-key core@kube01 "sudo mount /mnt/minio2"
-    ssh -i keys/kubelacave-key core@kube02 "sudo mount /mnt/minio2"
-    ssh -i keys/kubelacave-key core@kube03 "sudo mount /mnt/minio2"
-
 Créer la classe de stockage et les volumnes persistants
 
     kubectl apply -f minio/miniostorage.yaml
 
-Création d'un tenent
+Création d'un tenant
 
     Créer le namespace pour le tenant:
         oc new-project minio-tenant --description="Minio Storage Tenant" --display-name="Minio Tenant"
@@ -688,3 +740,44 @@ Création d'un tenent
 ## Activer le registre d'image
 
 ## Journalisation
+
+## Mise à jour du cluster
+Voici les étapes pour la mise à jour du cluster: https://docs.okd.io/latest/updating/updating-cluster-cli.html
+
+J'ai été obligé de modifier la confdiguration de l'opérateur de mises à jour avec la commande suivante: https://gitmemory.com/issue/openshift/okd/674/857717204
+
+    oc patch clusterversion/version --patch '{"spec":{"upstream":"https://amd64.origin.releases.ci.openshift.org/graph"}}' --type=merge
+
+
+Obtenir la liste des mises à jour disponible pour le cluster
+
+    oc adm upgrade
+    Cluster version is 4.7.0-0.okd-2021-06-04-191031
+
+    Updates:
+
+    VERSION                       IMAGE
+    4.7.0-0.okd-2021-06-13-090745 registry.ci.openshift.org/origin/release@sha256:ab372d72a365b970193bc3369f6eecfd3d63a5d71c24edd263743b263c053155
+    4.7.0-0.okd-2021-06-19-191547 registry.ci.openshift.org/origin/release@sha256:a6a71ae89dc9e171fecc2fb93d6a02f9bdd720cd4ca93c1de0b0c5575c12c907
+
+Lancer la mise à jour:
+
+    oc adm upgrade --to-latest=true
+    Updating to latest version 4.7.0-0.okd-2021-06-19-191547
+
+    {
+    "channel": "stable-4",
+    "clusterID": "76d5234b-76bc-4964-8c88-35b54b21b36e",
+    "desiredUpdate": {
+        "force": false,
+        "image": "registry.ci.openshift.org/origin/release@sha256:a6a71ae89dc9e171fecc2fb93d6a02f9bdd720cd4ca93c1de0b0c5575c12c907",
+        "version": "4.7.0-0.okd-2021-06-19-191547"
+    },
+    "upstream": "https://amd64.origin.releases.ci.openshift.org/graph"
+    }
+
+Vérifier la progression de la mise à jour:
+
+    oc get clusterversion
+    NAME      VERSION                         AVAILABLE   PROGRESSING   SINCE   STATUS
+    version   4.7.0-0.okd-2021-06-04-191031   True        True          19m     Working towards 4.7.0-0.okd-2021-06-19-191547: 115 of 670 done (17% complete)

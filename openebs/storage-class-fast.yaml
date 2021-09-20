@@ -1,0 +1,16 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-lvm-localpv-fast
+allowVolumeExpansion: true
+parameters:
+  storage: "lvm"
+  volgroup: "fastvg"
+provisioner: local.csi.openebs.io
+allowedTopologies:
+- matchLabelExpressions:
+  - key: kubernetes.io/hostname
+    values:
+      - kube05
+      - kube06
+      - kube07
