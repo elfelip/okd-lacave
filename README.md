@@ -152,6 +152,24 @@ Le Load balancer devrait balancer la charge pour les ports suivants:
     6443 vers kube01, kube02, kube03 et kube04. kube04 sera retiré à la fin de l'installation du cluster
     22623 vers kube01, kube02, kube03 et kube04. kube04 sera retiré à la fin de l'installation du cluster
 
+### Load Balancer NGINX
+
+J'ai installé NGINX sur l'hôte Centos qui héberge les VM des noeuds kube04, kube05, kube06 et kube07.
+Source : https://www.cyberciti.biz/faq/configure-nginx-ssltls-passthru-with-tcp-load-balancing/
+Pour installer nginx:
+
+    sudo dnf install -y nginx
+
+Ajouter les lignes suivantes au fichier /etc/nginx/nginx.conf
+
+    include /etc/nginx/passthrough.conf;
+
+Copier le fichier nginx/passthrough.conf de ce projet dans le répertoire /etc/nginx.
+
+Redémarrer Nginx
+
+    sudo systemctl reload nginx
+
 ## Préparation du DNS
 
 Dans notre installation, Un serveur DNS bind est installé sur le serveur de provisionning.
@@ -164,7 +182,7 @@ On a besoin des entrés suivantes:
 $ORIGIN lacave.info.
 $TTL 3600       ; 1 hour
 dns1                    A       192.168.1.10
-
+lb                      A       192.168.1.20
 kube01                  A       192.168.1.21
 master0.kubelacave.kube CNAME   kube01.lacave.info.
 kube02                  A       192.168.1.22
@@ -173,11 +191,12 @@ kube03                  A       192.168.1.23
 master2.kubelacave.kube CNAME   kube03.lacave.info.
 kube04                  A       192.168.1.24
 bootstrap.kubelacave.kube       CNAME   kube04.lacave.info.
+lb.kubelacave.kube      CNAME   lb.lacave.info.
 
-kube                    CNAME   bootstrap.kubelacave.kube.lacave.info.
-api.kubelacave.kube     CNAME   bootstrap.kubelacave.kube.lacave.info.
-api-int.kubelacave.kube CNAME   bootstrap.kubelacave.kube.lacave.info.
-helper.kubelacave.kube  CNAME   bootstrap.kubelacave.kube.lacave.info.
+kube                    CNAME   lb.kubelacave.kube.lacave.info.
+api.kubelacave.kube     CNAME   lb.kubelacave.kube.lacave.info.
+api-int.kubelacave.kube CNAME   lb.kubelacave.kube.lacave.info.
+helper.kubelacave.kube  CNAME   lb.kubelacave.kube.lacave.info.
 *.kube                  CNAME   kube.lacave.info.
 *.kubelacave.kube       CNAME   kube.lacave.info.
 
@@ -189,7 +208,7 @@ Les entrés devront alors être modifiées pour:
     api-int.kubelacave.kube CNAME   master0.kubelacave.kube.lacave.info.
     kube                    CNAME   master1.kubelacave.kube.lacave.info.
 
-Cette étape est néceessaire parce qu'on a pas de load balancer. 
+Cette étape n'est plus néceessaire parce qu'on a un load balancer. 
 
 ## Fichier ignition de base pour les noeuds
 Pour la configurtation des serveurs, on créé un fichier Yaml.
