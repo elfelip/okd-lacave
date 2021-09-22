@@ -160,6 +160,20 @@ Pour installer nginx:
 
     sudo dnf install -y nginx
 
+Modifier la section suivante du fichier /etc/nginx/nginx.conf pour libérer le port 80:
+
+    server {
+        listen       8080 default_server;
+        listen       [::]:8080 default_server;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        location / {
+        }
+
 Ajouter les lignes suivantes au fichier /etc/nginx/nginx.conf
 
     include /etc/nginx/passthrough.conf;
@@ -208,7 +222,7 @@ Les entrés devront alors être modifiées pour:
     api-int.kubelacave.kube CNAME   master0.kubelacave.kube.lacave.info.
     kube                    CNAME   master1.kubelacave.kube.lacave.info.
 
-Cette étape n'est plus néceessaire parce qu'on a un load balancer. 
+Cette étape n'est plus nécessaire parce qu'on a un load balancer et que le DNS est configuré pour l'utiliser. 
 
 ## Fichier ignition de base pour les noeuds
 Pour la configurtation des serveurs, on créé un fichier Yaml.
@@ -367,15 +381,15 @@ Pour ce document, j'utilise le répertoire okd
 Clients:
 
     cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-04-24-103438/openshift-client-linux-4.7.0-0.okd-2021-04-24-103438.tar.gz
-    tar -zxvf openshift-client-linux-4.7.0-0.okd-2021-04-24-103438.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-09-19-013247/openshift-client-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
+    tar -zxvf openshift-client-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
     sudo cp oc /usr/local/bin
 
 Install:
 
     cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-04-24-103438/openshift-install-linux-4.7.0-0.okd-2021-04-24-103438.tar.gz
-    tar -zxvf openshift-install-linux-4.7.0-0.okd-2021-04-24-103438.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-09-19-013247/openshift-install-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
+    tar -zxvf openshift-install-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
 
 
 ### Créer la clé ssh pour l'usager core des noeuds du cluster
@@ -444,6 +458,21 @@ Il faut ensuite fusionner le contenu de ces fichiers avec les fichier ign déjà
 Pour le cluster, on fusionne le fichier bootstrap.ign avec kueb04.ign
 et le fichier master.ign avec les fichiers kueb01.ign. kube02.ign et kube03.ign
 On dépose ensuite les fichiers dans le répertoire /var/www/html/okd
+
+Un truc pour faire la mise en page du fichier ign c'est d'utiliser jq. Exemple:
+
+    cat bootstrap.ign | jq > kube04.ign
+    cat master.ign | jq > kube01.ign
+    cat master.ign | jq > kube02.ign
+    cat master.ign | jq > kube03.ign
+    cat worker.ign | jq > kube05.ign
+    cat worker.ign | jq > kube06.ign
+    cat worker.ign | jq > kube07.ign
+
+La partie à fusionner est dans la section storage files. On doit ajouter les fichiers suivants dans le fichier ignition pour la configuration du réseau:
+
+    /etc/hostname
+    /etc/NetworkManager/system-connections/NOMINTERFACERESEAU.nmconnection
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
 
@@ -547,9 +576,9 @@ Pour extraire le certificat, lancer la commande suivante:
 
 Le certificat est maintenant dans le fichier router-ca.pem.
 
-Dans Firefox, on peut l'ajouter dans la liste des autorités de certificaiton de confiance en allant dans les préférences.
+Dans Firefox, on peut l'ajouter dans la liste des autorités de certification de confiance en allant dans les préférences.
 Pour l'ajouter dans les certificats de confiance de votre machine Windows, utiliser la console des certificats.
-Pour l'ajouter dans Ubuntu, faire els étapes suivantes:
+Pour l'ajouter dans Ubuntu, faire les étapes suivantes:
 
     Copier le fichier dans le répertoire /usr/local/share/ca-certificates/
         sudo cp router-ca.pem /usr/local/share/ca-certificates/router-ca.crt
@@ -593,7 +622,26 @@ Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien �
     kube07   Ready    worker          15h     v1.20.0+7d0a2b2-1058
 
 
+## Authentification au registres d'images
 
+On utilise les crédentiels qu'on a dans notre fichier .docker/config.json
+https://docs.openshift.com/container-platform/4.8/openshift_images/managing_images/using-image-pull-secrets.html
+
+    oc create secret generic docker-secret --from-file=.dockerconfigjson=/home/felip/.docker/config.json --type=kubernetes.io/dockerconfigjson
+    oc secrets link default docker-secret --for=pull
+
+Pour ajouter le secret à la config globale:
+Obtenir la liste des secret de la config:
+
+    oc get secret/pull-secret -n openshift-config --template='{{index .data ".dockerconfigjson" | base64decode}}' > globalpullsecret
+
+Ajouter le crédentiel docker.io au fichier globalpullsecret
+
+    oc registry login --registry=docker.io --auth-basic="username:password" --to=globalpullsecret
+
+Mettre à jour la configuration globale:
+
+    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=globalpullsecret
 ## Stockage
 
 Chaque noeuds possède du stockage local. Pour faciliter son utilisation, on installe des approvisionneurs de stockage.
@@ -601,73 +649,6 @@ Chaque noeuds possède du stockage local. Pour faciliter son utilisation, on ins
 ### OpenEBS
 Le stockage local des noeuds est géré avec OpenEBS: https://docs.openebs.io/docs.
 Ce type de stockage n'est, en général, pas redondant. Les StatefulSet qui utilisent ce stockage doivent donc être redontant.
-
-#### Installation
-Avec Openshift, on peut installer l'opérateur à partir de la console: Operateor -> Operator Hub
-
-Avec OKD, on doit utiliser HELM: https://docs.openebs.io/docs/next/installation.html
-
-    helm repo add openebs https://openebs.github.io/charts
-    helm repo update
-    helm install openebs --namespace kube-system openebs/openebs
-
-    NAME: openebs
-    LAST DEPLOYED: Mon Sep 20 14:18:31 2021
-    NAMESPACE: kube-system
-    STATUS: deployed
-    REVISION: 1
-    TEST SUITE: None
-    NOTES:
-    The OpenEBS has been installed. Check its status by running:
-    $ kubectl get pods -n kube-system
-
-    For dynamically creating OpenEBS Volumes, you can either create a new StorageClass or
-    use one of the default storage classes provided by OpenEBS.
-
-    Use `kubectl get sc` to see the list of installed OpenEBS StorageClasses. A sample
-    PVC spec using `openebs-jiva-default` StorageClass is given below:"
-
-    ---
-    kind: PersistentVolumeClaim
-    apiVersion: v1
-    metadata:
-    name: demo-vol-claim
-    spec:
-    storageClassName: openebs-jiva-default
-    accessModes:
-        - ReadWriteOnce
-    resources:
-        requests:
-        storage: 5G
-    ---
-
-    Please note that, OpenEBS uses iSCSI for connecting applications with the
-    OpenEBS Volumes and your nodes should have the iSCSI initiator installed.
-
-    For more information, visit our Slack at https://openebs.io/community or view the documentation online at http://docs.openebs.io/.
-    J'ai utilisé l'installation par défaut le l'opérateur en incluant CStor et tout est déployé dans le namespace openebs.
-Les approvisionneurs installés sont:
-
-    - Device
-    - Host path
-    - Jiva
-
-L'installation créé par défaut 4 classes de stockage:
-
-    kubectl get storageclass
-    NAME                        PROVISIONER                                                RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-    openebs-device              openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
-    openebs-hostpath            openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
-    openebs-jiva-default        openebs.io/provisioner-iscsi                               Delete          Immediate              false                  98d
-    openebs-snapshot-promoter   volumesnapshot.external-storage.k8s.io/snapshot-promoter   Delete          Immediate 
-
-La classe openebs-hostpath peut être utilisée telle quelle. Les données sont alors déposé dans le répertoire /var/openebs/local du rootvg des noeuds.
-
-Pour pouvoir utiliser LVM, on installe le provisionneur LVM avec la commande suivante:
-
-    kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
-
-La documentation pour LVM: https://github.com/openebs/lvm-localpv
 
 ### Création des groupes de volumes pour OpenEBS
 
@@ -688,6 +669,38 @@ Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les d
     ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate fastvg /dev/sdc"
     ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate fastvg /dev/sdc"
 
+#### Installation
+La meilleure manière que j.ai trouvé de l'installer c'est en utilisant les chartes YAML:
+
+Pour installer l'opérateur OpenEBS:
+
+    kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+
+J'ai utilisé l'installation par défaut le l'opérateur. Tout est déployé dans le namespace openebs.
+Les approvisionneurs installés sont:
+
+    - Device
+    - Host path
+    - Jiva
+
+L'installation créé par défaut 4 classes de stockage:
+
+    kubectl get storageclass
+    NAME                        PROVISIONER                                                RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+    openebs-device              openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
+    openebs-hostpath            openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
+    openebs-jiva-default        openebs.io/provisioner-iscsi                               Delete          Immediate              false                  98d
+    openebs-snapshot-promoter   volumesnapshot.external-storage.k8s.io/snapshot-promoter   Delete          Immediate 
+
+La classe openebs-hostpath peut être utilisée telle quelle. Les données sont alors déposé dans le répertoire /var/openebs/local du rootvg des noeuds.
+
+Installer lvm-localpv
+
+    kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
+    
+L'opérateur lvm s'installe dans le namespace kube-system
+
+La documentation pour LVM: https://github.com/openebs/lvm-localpv
 
 On créé ensuite 2 classes de stockage pour gérer le stockage rapide de type SSD et lent de type SATA de amnière différente.
 Voici les classes à créer
@@ -713,6 +726,7 @@ Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire le
 Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
 
 ### Minio
+On a pas utilisé minio dans la POC
 
 Installer le gestionnaire de plugin krew pour kubectl:
 
@@ -800,3 +814,17 @@ Vérifier la progression de la mise à jour:
     oc get clusterversion
     NAME      VERSION                         AVAILABLE   PROGRESSING   SINCE   STATUS
     version   4.7.0-0.okd-2021-06-04-191031   True        True          19m     Working towards 4.7.0-0.okd-2021-06-19-191547: 115 of 670 done (17% complete)
+
+# Gestion des bases de données
+
+On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
+
+## Stackgres
+
+Stackgres est un opérateur qui permet de créer des cluster de bases de données.
+
+Pour installer l'opérateur:
+
+    kubectl apply -f 'https://sgres.io/install?namespace=stackgres&adminui-service-type=LoadBalancer&grafana-autoEmbed=true'
+
+On a un exemple dans le repository:

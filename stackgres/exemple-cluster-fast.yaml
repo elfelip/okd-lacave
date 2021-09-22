@@ -1,0 +1,12 @@
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: simple-pg-cluster-fast
+  namespace: stackgres
+spec:
+  instances: 2
+  postgresVersion: 'latest'
+  pods:
+    persistentVolume: 
+      size: '5Gi'
+      storageClass: openebs-lvm-localpv-fast
