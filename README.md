@@ -642,6 +642,7 @@ Ajouter le crédentiel docker.io au fichier globalpullsecret
 Mettre à jour la configuration globale:
 
     oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=globalpullsecret
+
 ## Stockage
 
 Chaque noeuds possède du stockage local. Pour faciliter son utilisation, on installe des approvisionneurs de stockage.
@@ -822,9 +823,52 @@ On va utiliser quelques outils pour faciliter les gestion des instances de bases
 ## Stackgres
 
 Stackgres est un opérateur qui permet de créer des cluster de bases de données.
+Ne semble pas bien fonctionner sous OKD/Openshfit
 
 Pour installer l'opérateur:
 
     kubectl apply -f 'https://sgres.io/install?namespace=stackgres&adminui-service-type=LoadBalancer&grafana-autoEmbed=true'
 
-On a un exemple dans le repository:
+
+Modifier la policy pour permettre aux pods de spécifier des id de groupe et de user standards:
+    oc adm policy add-scc-to-user nonroot -z stackgres-operator -n stackgres
+    oc adm policy add-scc-to-user nonroot -z stackgres-restapi -n stackgres
+    oc adm policy add-scc-to-user nonroot -z stackgres-operator-init -n stackgres
+
+On peut déployer le cluster exemple:
+    kubectl create -f stackgres/exemple-cluster-fast.yaml 
+    oc adm policy add-scc-to-user nonroot -z simple-pg-cluster-fast-patroni -n stackgres
+
+## Zalando
+
+Un autre opérateur Postgres:
+
+https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
+
+Installation:
+
+    Faire un clone du repository
+        git clone https://github.com/zalando/postgres-operator.git
+    Créer le namespace
+        kubectl create namespace postgres-operator
+    Installer l'opérateur et le UI
+        cd postgres-operator
+        helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
+        helm install postgres-operator-ui ./charts/postgres-operator-ui -n postgres-operator
+    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
+        oc adm policy add-scc-to-user nonroot -z builder -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z postgres-operator-ui -n postgres-operator
+    Ajouter les droits cluster admin au compte de service postgres-pod
+        kubectl create -f zalando/postgres-pod-cluster-admin.yaml
+
+On peut créer un cluster de test avec le manifest suivant:
+    
+    kubectl create -f zalando/minimal-postgres-manifest.yaml
+
+Patcher le service pour lui ajouter un pod selector:
+
+    kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
+    
