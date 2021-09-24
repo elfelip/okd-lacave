@@ -871,4 +871,18 @@ On peut créer un cluster de test avec le manifest suivant:
 Patcher le service pour lui ajouter un pod selector:
 
     kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
+
+## Gestion des certificats
+
+### Installation cert-manager
+Cert Manager peut être installé avec Helm
+
+    helm repo add jetstack https://charts.jetstack.io
+    helm repo update
+    helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.5.3 --set installCRDs=true
+
+### Création de l'émetteur de certificat SelfSigned pour lacave
+Cert-manager peut créer des certificats en utilisant une autoirité de certification selfsigned. Pour créer cet émetteur au niveau du cluster, exécuter le manifest suivant:
+
+    kubectl create -f resources/cert/root-ca-cert-manager.yml
     
