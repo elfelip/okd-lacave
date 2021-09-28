@@ -1,3 +1,9 @@
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: {{ project_name }}-elasticsearch
+  namespace: elastic-system
+---
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
@@ -12,9 +18,9 @@ spec:
       spec:
         containers:
         - name: elasticsearch
+          serviceAccountName: {{ project_name }}-elasticsearch
           securityContext:
-            capabilities:
-              add: ["SYS_CHROOT"]
+            privileged: true
           env:
           - name: ES_JAVA_OPTS
             value: {{ eck_elastic_es_java_opts | default('-Xms2g -Xmx2g') }}

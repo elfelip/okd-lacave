@@ -28,6 +28,15 @@
       minutes: 2
     when: eck_operator_install_result is defined and eck_operator_install_result.changed is defined and eck_operator_install_result.changed
 
+  - name: Ajouter privileged par défaut dans le namespace
+    command: oc adm policy add-scc-to-user privileged -z default -n elastic-system
+  - name: Ajouter anyuid par défaut dans le namespace
+    command: oc adm policy add-scc-to-user anyuid -z default -n elastic-system
+  - name: Ajouter hostmount-anyuid par défaut dans le namespace
+    command: oc adm policy add-scc-to-user hostmount-anyuid -z default -n elastic-system
+  - name: Ajouter hostnetwork par défaut dans le namespace
+    command: oc adm policy add-scc-to-user hostnetwork -z default -n elastic-system
+
   - name: Générer le manifest dans les artefacts
     local_action:
       module: template
@@ -40,6 +49,9 @@
       state: present
       definition: "{{ lookup('template','elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
     register: eck_elastic_install_result
+
+  - name: Ajouter les privilèges au compte de service
+    command: oc adm policy add-scc-to-user privileged -z {{ project_name }}-elasticsearch -n elastic-system
 
   - name: Attendre 2 minutes qu'Elasticsearch soit démarré
     pause:
@@ -81,3 +93,6 @@
       state: present
       definition: "{{ lookup('template','beats/eck-beats-manifest.yaml.j2') }}"
     register: eck_beats_install_result
+
+  - name: Ajouter les privilèges au compte de service
+    command: oc adm policy add-scc-to-user privileged -z filebeat -n elastic-system

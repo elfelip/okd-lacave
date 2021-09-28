@@ -1,3 +1,4 @@
+---
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
@@ -43,6 +44,7 @@ spec:
         hostNetwork: true
         securityContext:
           runAsUser: 0
+          privileged: true
         containers:
         - name: filebeat
           volumeMounts:
@@ -100,4 +102,17 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat-cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: elastic-system
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
   apiGroup: rbac.authorization.k8s.io

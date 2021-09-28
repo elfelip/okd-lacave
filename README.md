@@ -875,3 +875,18 @@ Cert-manager peut créer des certificats en utilisant une autoirité de certific
 
     kubectl create -f resources/cert/root-ca-cert-manager.yml
     
+
+## Journalisation
+
+On utilise Elasticsearch, Kibana et Beats pour récolter les journaux du cluster Kubernetes.
+
+### Elastic Cloud on Kubernetes
+Pour déployer Elasticsearch on utilise l'opérateur ECK.
+
+On le déploie avec Ansible:
+
+    ansible-playbook -i inventory/okd-lacave/hosts eck/deploy_eck.yml
+    
+Pour obtenir le mot de passe de l'utilisateur elastic:
+
+    kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
