@@ -1,2 +1,6 @@
-ansible_connection: local
-ansible_python_interpreter: /usr/bin/python3
+#ansible_connection: local
+#ansible_python_interpreter: /usr/bin/python3
+#ansible_become: no
+kube_domain: kube.lacave.inbfo
+kube_cluster: kubelacave
+kube_routes_domain: apps.{{ kube_cluster }}.{{ kube_cluster }}

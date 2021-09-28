@@ -17,7 +17,7 @@ keycloak_proxy_address_forwarding: 'true'
 keycloak_kube_certificate_name: keycloak-cert
 keycloak_pod_image_pull_policy: Always
 keycloak_kube_certificate_issuer: ca-lacave-issuer
-keycloak_kube_certificate_org: lacave
+keycloak_kube_certificate_org: Lacave
 keycloak_base_url: keycloak.{{ keycloak_domain }}
 keycloak_url: "{{ keycloak_protocol }}://{{ keycloak_base_url }}"
 keycloak_auth_client_id: admin-cli

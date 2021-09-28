@@ -1,0 +1,39 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ project_name }}-elasticsearch
+  namespace: elastic-system
+spec:
+  version: {{ eck_elastic_version | default('7.9.3') }}
+  nodeSets:
+  - name: masters
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: {{ eck_elastic_es_java_opts | default('-Xms2g -Xmx2g') }}
+          resources:
+            requests:
+              memory: {{ eck_elastic_resources_requests_memory | default('4Gi') }}
+              cpu: {{ eck_elastic_resources_requests_cpu | default('0.5') }}
+            limits:
+              memory: {{ eck_elastic_resources_limits_memory | default('4Gi') }}
+              cpu: {{ eck_elastic_resources_limits_cpu | default('2') }}
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ eck_elasticsearch_storage_size | default('10Gi') }}
+        storageClassName: rook-ceph-block
