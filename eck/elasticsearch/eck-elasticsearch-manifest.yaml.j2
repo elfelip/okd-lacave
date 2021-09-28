@@ -12,6 +12,9 @@ spec:
       spec:
         containers:
         - name: elasticsearch
+          securityContext:
+            capabilities:
+              add: ["SYS_CHROOT"]
           env:
           - name: ES_JAVA_OPTS
             value: {{ eck_elastic_es_java_opts | default('-Xms2g -Xmx2g') }}
@@ -22,6 +25,8 @@ spec:
             limits:
               memory: {{ eck_elastic_resources_limits_memory | default('4Gi') }}
               cpu: {{ eck_elastic_resources_limits_cpu | default('2') }}
+      allowedCapabilities:
+        - 'SYS_CHROOT'
     config:
       node.master: true
       node.data: true
@@ -36,4 +41,4 @@ spec:
         resources:
           requests:
             storage: {{ eck_elasticsearch_storage_size | default('10Gi') }}
-        storageClassName: rook-ceph-block
+        storageClassName: {{ eck_elasticsearch_storage_class }}

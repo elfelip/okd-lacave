@@ -4,3 +4,4 @@ eck_elasticsearch_storage_size: 50Gi
 eck_kibana_version: 7.15.0
 eck_kibana_url: kibana.{{ kube_routes_domain }}
 eck_beats_version: 7.15.0
+eck_elasticsearch_storage_class: openebs-lvm-localpv-slow

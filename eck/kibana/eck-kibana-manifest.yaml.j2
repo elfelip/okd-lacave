@@ -47,6 +47,9 @@ spec:
       http:
         paths:
         - path: /
+          pathType: Prefix
           backend:
-            serviceName: {{ project_name }}-kibana-kb-http
-            servicePort: 5601
+            service:
+              name: {{ project_name }}-kibana-kb-http
+              port: 
+                number: 5601
