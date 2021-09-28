@@ -4,4 +4,4 @@
 kube_domain: kube.lacave.inbfo
 kube_cluster: kubelacave
 kube_routes_domain: apps.{{ kube_cluster }}.{{ kube_cluster }}
-project_name: okd-lacave
+project_name: lacave

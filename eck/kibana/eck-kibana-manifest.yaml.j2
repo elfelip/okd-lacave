@@ -13,7 +13,7 @@ spec:
       selfSignedCertificate:
         disabled: true    
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kibana-{{ project_name }}-tls
@@ -29,13 +29,13 @@ spec:
   dnsNames:
     - {{ eck_kibana_url }}
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kibana-{{ project_name }}-ingress
   namespace: elastic-system
   annotations:
-    kubernetes.io/ingress.class: "nginx"
+    route.openshift.io/termination: "edge"
     cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
 spec:
   tls:
