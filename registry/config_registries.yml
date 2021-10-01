@@ -17,7 +17,7 @@
             metadata:
               name: "{{ trusted_registry_configmap }}"
             data:
-              nexus3.inspq.qc.ca..5000: "{{ slurp_nexus_cert | b64decode }}"
+              nexus3.inspq.qc.ca..5000: "{{ slurp_nexus_cert.content | b64decode }}"
           
       - name: Ajouter le configmap au additionnalTrustedCa du cluster
         k8s:
