@@ -8,6 +8,10 @@
     cert_manager_helm_chart: jetstack/cert-manager
     cert_manager_manifest_url: "https://github.com/jetstack/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.yaml"
   tasks:
+  - name: installer les pré-requis python
+    pip:
+      name:
+        - openshift
   - name: Installer le référentiel Helm Jetstack pour cert-manager
     community.kubernetes.helm_repository:
       name: "{{ cert_manager_helm_repo_name }}"
