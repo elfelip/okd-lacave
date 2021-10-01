@@ -70,15 +70,15 @@
   - name: Copier le root ca sur les noeuds du Cluster
     command: scp -i {{ node.key }} {{ self_signed_pki_path }}/{{ self_signed_pki_ca_cert_path }}/{{ self_signed_pki_ca_cert_file }} {{ node.user }}@{{ node.name }}:/tmp
     with_items:
-      var: node
+      index_var: node
   - name: Préparer le root ca sur les noeuds du Cluster
     command: ssh -i {{ node.key }} {{ node.user }}@{{ node.name }} "sudo cp /tmp/{{ self_signed_pki_ca_cert_file }} /etc/pki/ca-trust/source/anchors"
     with_items:
-      var: node
+      index_var: node
   - name: Installer le root ca sur les noeuds du Cluster
     command: ssh -i {{ node.key }} {{ node.user }}@{{ node.name }} "sudo update-ca-trust extract"
     with_items:
-      var: node
+      index_var: node
   - name: Installer les certificats sur l'hôte de gestion
     block:
     - name: Installer le certificat root sur le serveur de Management Debian
