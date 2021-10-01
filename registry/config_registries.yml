@@ -7,10 +7,23 @@
       when:
         - manifest_dest is defined
 
+    - name: Slurp certificat
+      slurp:
+        src: "{{ trusted_registry_cas[0].config_file }}"
+      register: slurp_cert
+
     - name: Créer le configmap contenant les certificats des registres de confiances
       k8s:
         state: present
-        definition: "{{ lookup('template', 'trusted-registry-manifest.yaml.j2') }}"
+        namespace: openshift-config
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ trusted_registry_configmap }}"
+          data:
+            nexus3.inspq.qc.ca..5000: slurp_cert.content
+#        definition: "{{ lookup('template', 'trusted-registry-manifest.yaml.j2') }}"
         
     - name: Ajouter le configmap au additionnalTrustedCa du cluster
       k8s:
