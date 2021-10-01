@@ -1,41 +1,36 @@
 - hosts: cert
   tasks:
-    - name: Créer le manifest du configmap contenant les certificats des registres de confiances
-      template:
-        dest: "{{ manifest_dest }}/trusted-registry-manifest.yaml"
-        src: trusted-registry-manifest.yaml.j2
-      when:
-        - manifest_dest is defined
+    - name: Ajouter le certificat CA du Nexus dans la liste de CA des registres de confiance
+      block:
+      - name: Slurp certificat Nexus
+        slurp:
+          src: "{{ nexus_registry_ca_cert }}"
+        register: slurp_nexus_cert
 
-    - name: Slurp certificat
-      slurp:
-        src: "{{ trusted_registry_cas[0].config_file }}"
-      register: slurp_cert
-
-    - name: Créer le configmap contenant les certificats des registres de confiances
-      k8s:
-        state: present
-        namespace: openshift-config
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: "{{ trusted_registry_configmap }}"
-          data:
-            "{{ trusted_registry_cas[0].config_key }}": "{{ slurp_cert.content | b64decode }}"
-#        definition: "{{ lookup('template', 'trusted-registry-manifest.yaml.j2') }}"
-        
-    - name: Ajouter le configmap au additionnalTrustedCa du cluster
-      k8s:
-        definition:
-          apiVersion: config.openshift.io/v1
-          kind: Image
-          metadata:
-            name: cluster
-          spec:
-            additionalTrustedCA:
+      - name: Créer le configmap contenant le certificat du registre Nexus
+        k8s:
+          state: present
+          namespace: openshift-config
+          definition:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
               name: "{{ trusted_registry_configmap }}"
-
-      #command: kubectl patch image.config.openshift.io/cluster --patch '{"spec":{"additionalTrustedCA":{"name":"{{ trusted_registry_configmap }}"}}}' --type=merge
+            data:
+              nexus3.inspq.qc.ca..5000: "{{ slurp_nexus_cert | b64decode }}"
+          
+      - name: Ajouter le configmap au additionnalTrustedCa du cluster
+        k8s:
+          definition:
+            apiVersion: config.openshift.io/v1
+            kind: Image
+            metadata:
+              name: cluster
+            spec:
+              additionalTrustedCA:
+                name: "{{ trusted_registry_configmap }}"
+      when:
+        - trusted_registry_configmap is defined
+        - nexus_registry_ca_cert is defined
 
   

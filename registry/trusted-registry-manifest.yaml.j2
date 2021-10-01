@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ trusted_registry_configmap }}
-  namespace: openshift-config
-data:
-{% for registry in trusted_registry_cas %}
-  {{ registry.config_key }}: "{{ lookup('file',registry.config_file) | trim | string }}"
-{% endfor %}
