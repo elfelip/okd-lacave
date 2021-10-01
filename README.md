@@ -861,20 +861,40 @@ Patcher le service pour lui ajouter un pod selector:
 
     kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
 
+## Ansible
+
+Plusieurs étapes de la configuration du cluster se font en utilisant Ansible et la collection de modules community.kubernetes
+
+Il faut utiliser Ansible 2.10 ou plus.
+Certains playbook utilisent des secriet chiffrés, bien s'assurer d'avoir le bon fichier de mot de passe /etc/ansible/passfile
+
+Le première étape est d'installer les pré-requis:
+
+    ansible-galaxy install collection -r requiremets.yml
+
+L'inventaire Ansible de ce projet est dans le répertoire suivant:
+
+    inventory/okd-lacave
+
 ## Gestion des certificats
 
 ### Installation cert-manager
 Cert Manager peut être installé avec Helm
 
-    helm repo add jetstack https://charts.jetstack.io
-    helm repo update
-    helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.5.3 --set installCRDs=true
+L'installation de cert-manager et la création du clusterissuer pour lacave se fait avec Ansible.
 
-### Création de l'émetteur de certificat SelfSigned pour lacave
-Cert-manager peut créer des certificats en utilisant une autoirité de certification selfsigned. Pour créer cet émetteur au niveau du cluster, exécuter le manifest suivant:
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_cert_manager.yml
 
-    kubectl create -f resources/cert/root-ca-cert-manager.yml
-    
+### Configuraiton des registres d'images
+
+Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contien le ca de chacunb des registres de confiance et l'ajouter à la configuraiton du cluster.
+Ces étapes ont été automatisé dans le playbook registry/config_registries.yml
+
+La liste des certificats est dans l'inventaire Ansible
+
+Exécuter le playbook avec la commande suivantes:
+
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dest=/tmp registry/config_registries.yml
 
 ## Journalisation
 
@@ -886,7 +906,7 @@ Pour déployer Elasticsearch on utilise l'opérateur ECK.
 On le déploie avec Ansible:
 
     ansible-playbook -i inventory/okd-lacave/hosts eck/deploy_eck.yml
-    
+
 Pour obtenir le mot de passe de l'utilisateur elastic:
 
     kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
