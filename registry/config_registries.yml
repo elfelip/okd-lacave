@@ -3,7 +3,7 @@
     - name: Créer le manifest du configmap contenant les certificats des registres de confiances
       template:
         dest: "{{ manifest_dest }}/trusted-registry-manifest.yaml"
-        src: "{{ lookup('template', 'trusted-registry-manifest.yaml.j2') }}"
+        src: trusted-registry-manifest.yaml.j2
       when:
         - manifest_dest is defined
 
