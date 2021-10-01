@@ -54,7 +54,7 @@
   - name: Générer le manifest dans les artefacts
     local_action:
       module: template
-      src: resources/cert/root-ca-cert-manager.yaml.j2
+      src: root-ca-cert-manager.yaml.j2
       dest: "{{ manifest_dir }}/root-ca-cert-manager.yaml"
     when:
       - manifest_dir is defined 
@@ -63,7 +63,7 @@
       - self_signed_intemediate_ca_cert is defined
   - name: Installer ClusterIssuer avec le certificat root self-signed
     k8s:
-      definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
+      definition: '{{ lookup("template", "root-ca-cert-manager.yaml.j2") }}'
       namespace: "{{ cert_manager_namespace }}"
       state: present
     when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
