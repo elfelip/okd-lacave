@@ -6,3 +6,4 @@ metadata:
 data:
 {% for reg in trusted_registry_cas %}
   {{ reg.config_key }}:{{ lookup('file',reg.config_file) }}
+{% endfor %}
