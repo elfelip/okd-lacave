@@ -1,5 +1,12 @@
 - hosts: cert
   tasks:
+    - name: Créer le manifest du configmap contenant les certificats des registres de confiances
+      template:
+        dest: "{{ manifest_dest }}/trusted-registry-manifest.yaml"
+        src: "{{ lookup('template', 'trusted-registry-manifest.yaml.j2') }}"
+      when:
+        - manifest_dest is defined
+
     - name: Créer le configmap contenant les certificats des registres de confiances
       k8s:
         state: present
