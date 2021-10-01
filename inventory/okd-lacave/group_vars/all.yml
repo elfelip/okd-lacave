@@ -1,7 +1,27 @@
-#ansible_connection: local
+ansible_connection: local
 #ansible_python_interpreter: /usr/bin/python3
 #ansible_become: no
 kube_domain: kube.lacave.info
 kube_cluster: kubelacave
 kube_routes_domain: apps.{{ kube_cluster }}.{{ kube_domain }}
 project_name: lacave
+kube_node_ssh_key_file: /home/felip/okd/auth/kubelacave-key
+kube_nodes:
+  - name: kube01
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube02
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube03
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube05
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube06
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube07
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"

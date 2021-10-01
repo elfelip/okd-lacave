@@ -1,0 +1,13 @@
+self_signed_pki_path: /home/felip/pki
+self_signed_pki_key_password: !vault |
+          $ANSIBLE_VAULT;1.2;AES256;lacave
+          34373939393864666661386531613631363632636235393838623061373164333836316262323830
+          6663663164663137333332306433303833323562656565660a643533323062356536386463623138
+          64376261343032366462623831396362303264643563616333663737353635646163643332363262
+          6362313362333330310a333764383937343630353465306565326432303465626634666136616636
+          6535
+self_signed_pki_ca_key_path: ca/root-ca/private
+self_signed_pki_ca_key_file: root-ca.key
+self_signed_pki_ca_cert_path: ca
+self_signed_pki_ca_cert_file: root-ca.crt
+self_signed_pki_ca_intermediate_file: signing-ca.crt
