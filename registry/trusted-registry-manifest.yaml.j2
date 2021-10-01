@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ trusted_registry_configmap }}
+  namespace: openshift-config
+data:
+{% for reg in trusted_registry_cas %}
+  {{ reg.config_key }}:{{ lookup('file',reg.config_file) }}

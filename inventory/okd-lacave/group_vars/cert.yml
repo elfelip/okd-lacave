@@ -11,3 +11,9 @@ self_signed_pki_ca_key_file: root-ca.key
 self_signed_pki_ca_cert_path: ca
 self_signed_pki_ca_cert_file: root-ca.crt
 self_signed_pki_ca_intermediate_file: signing-ca.crt
+trusted_registry_configmap: trustedregistrycas
+trusted_registry_cas:
+  - name: nexus
+    url: nexus3.inspq.qc.ca:5000
+    config_key: nexus3.inspq.qc.ca..5000
+    config_file: "{{ self_signed_pki_path }}/{{ self_signed_pki_ca_cert_path }}/{{ self_signed_pki_ca_cert_file }}" 
