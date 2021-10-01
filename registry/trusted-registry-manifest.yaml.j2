@@ -4,6 +4,6 @@ metadata:
   name: {{ trusted_registry_configmap }}
   namespace: openshift-config
 data:
-{% for reg in trusted_registry_cas %}
-  {{ reg.config_key }}:{{ lookup('file','{{ reg.config_file }}') }}
+{% for registry in trusted_registry_cas %}
+  {{ registry.config_key }}:{{ lookup('file','{{ registry.config_file }}') }}
 {% endfor %}
