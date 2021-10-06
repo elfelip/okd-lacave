@@ -885,6 +885,16 @@ L'installation de cert-manager et la création du clusterissuer pour lacave se f
 
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_cert_manager.yml
 
+### Ajouter le ca dans python
+
+Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les commandes suivantes: (à ajouter au plyabook)
+
+    python3 -m pip install certifi
+    cat router-ca.pem >> $(python3 -m certifi)
+    cat root-ca.crt  >> $(python3 -m certifi)
+
+En fait le but c'est d'ajouter les ca dans le fichier de certificats de confiance de Python installé par le module certifi.
+
 ### Configuraiton des registres d'images
 
 Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contien le ca de chacunb des registres de confiance et l'ajouter à la configuraiton du cluster.
