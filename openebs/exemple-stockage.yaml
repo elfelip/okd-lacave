@@ -18,7 +18,7 @@ metadata:
   name: openebs-exemple-pvc-2
   namespace: default
 spec:
-  storageClassName: openebs-lvm-localpv-fast
+  storageClassName: openebs-lvm-localpv-slow
   accessModes:
     - ReadWriteOnce
   resources:

@@ -18,6 +18,7 @@ Voici les infpormations pour ce cluster:
 
     Zone DNS pour le cluster: kube.lacave.info
     Nom du cluster: kubelacave
+
 ## PXE Boot
 Avec OKD, il est suggéré de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pxelinux sous Ubuntu 20.04.
 
@@ -84,8 +85,7 @@ Installer tftpd
 
 Télécharger les fichiers nécessaire au démarrage d'un noyeaux permettant l'installation pour FCOS
 
-    mkdir data
-    docker run --privileged -ti --rm -v $(pwd):/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
+    docker run --privileged -ti --rm -v /srv/tftp:/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
 
 Copier les fichiers nécessaires dans le répertoire du serveur tftp (pour Ubuntu /srv/tftp)
 
@@ -364,7 +364,7 @@ Pour créer le fichier ignition en format JSON utilisable par le processus d'ins
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube03.fcc > kube03.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube04.fcc > kube04.ign
 
-Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans mopn cas, je les ai mis sur mon serveur elrond qui est en Ubuntu et qui a Apache installé dessus, dans le répertoire /var/www/html/okd
+Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Pour ce projet, le serveur web est un Apache sur Ubuntu. Dans ce cas on dépose les fichiers dans le répertoire /var/www/html/okd
 
 ## Installation de OKD
 
@@ -381,15 +381,16 @@ Pour ce document, j'utilise le répertoire okd
 Clients:
 
     cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-09-19-013247/openshift-client-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
-    tar -zxvf openshift-client-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.8.0-0.okd-2021-10-10-030117/openshift-client-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
+    tar -zxvf openshift-client-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
     sudo cp oc /usr/local/bin
+    sudo cp kubectl /usr/local/bin
 
 Install:
 
     cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.7.0-0.okd-2021-09-19-013247/openshift-install-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
-    tar -zxvf openshift-install-linux-4.7.0-0.okd-2021-09-19-013247.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.8.0-0.okd-2021-10-10-030117/openshift-install-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
+    tar -zxvf openshift-install-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
 
 
 ### Créer la clé ssh pour l'usager core des noeuds du cluster
@@ -454,25 +455,33 @@ Cette commande va créer les fichiers suivants:
     master.ign
     worker.ign
 
-Il faut ensuite fusionner le contenu de ces fichiers avec les fichier ign déjà existant de nos noeuds.
+Il faut ensuite fusionner le contenu de ces fichiers avec les fichiers ign déjà existants de nos noeuds.
 Pour le cluster, on fusionne le fichier bootstrap.ign avec kueb04.ign
 et le fichier master.ign avec les fichiers kueb01.ign. kube02.ign et kube03.ign
 On dépose ensuite les fichiers dans le répertoire /var/www/html/okd
-
-Un truc pour faire la mise en page du fichier ign c'est d'utiliser jq. Exemple:
-
-    cat bootstrap.ign | jq > kube04.ign
-    cat master.ign | jq > kube01.ign
-    cat master.ign | jq > kube02.ign
-    cat master.ign | jq > kube03.ign
-    cat worker.ign | jq > kube05.ign
-    cat worker.ign | jq > kube06.ign
-    cat worker.ign | jq > kube07.ign
 
 La partie à fusionner est dans la section storage files. On doit ajouter les fichiers suivants dans le fichier ignition pour la configuration du réseau:
 
     /etc/hostname
     /etc/NetworkManager/system-connections/NOMINTERFACERESEAU.nmconnection
+
+Pour fusionner les fichiers, on peut utiliser la commande jq. Elle permet de partir du fichier fcc et de le combiner avec le fichier ign du rôle du noeud.
+Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les commandes suivantes. A partir du répertoire du projet, on assume que les fichiers ignition des noeuds sont dans le répertoire ~/okd/fedora, que les fichiers du manifest ont été générés dans le répertoire ~/kubernetes/okd/manifest et que le répertoire du serveur web est /var/www/html/okd.
+
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube01.fcc | jq > ~/kubernetes/fedora/kube01.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube02.fcc | jq > ~/kubernetes/fedora/kube02.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube03.fcc | jq > ~/kubernetes/fedora/kube03.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube04.fcc | jq > ~/kubernetes/fedora/kube04.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube05.fcc | jq > ~/kubernetes/fedora/kube05.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube06.fcc | jq > ~/kubernetes/fedora/kube06.ign
+
+    merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube01.ign
+    merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube02.ign
+    merge-ign.sh ~/kubernetes/fedora/kube03.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube03.ign
+    merge-ign.sh ~/kubernetes/fedora/kube04.ign ~/kubernetes/okd/manifest bootstrap.ign /var/www/html/okd/kube04.ign
+    merge-ign.sh ~/kubernetes/fedora/kube05.ign ~/kubernetes/okd/manifest worker.ign /var/www/html/okd/kube05.ign
+    merge-ign.sh ~/kubernetes/fedora/kube06.ign ~/kubernetes/okd/manifest worker.ign /var/www/html/okd/kube06.ign
+    
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
 
@@ -671,7 +680,7 @@ Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les d
     ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate fastvg /dev/sdc"
 
 #### Installation
-La meilleure manière que j.ai trouvé de l'installer c'est en utilisant les chartes YAML:
+La meilleure manière que j'ai trouvé de l'installer c'est en utilisant les chartes YAML:
 
 Pour installer l'opérateur OpenEBS:
 
@@ -895,7 +904,7 @@ Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les 
 
 En fait le but c'est d'ajouter les ca dans le fichier de certificats de confiance de Python installé par le module certifi.
 
-### Configuraiton des registres d'images
+### Configuration des registres d'images
 
 Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contien le ca de chacunb des registres de confiance et l'ajouter à la configuraiton du cluster.
 Ces étapes ont été automatisé dans le playbook registry/config_registries.yml
@@ -920,3 +929,13 @@ On le déploie avec Ansible:
 Pour obtenir le mot de passe de l'utilisateur elastic:
 
     kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+
+## Monitoring
+OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
+Il n'est cependant pas possible de créer os propres tableau de bord dans cette instance de Grafana.
+
+On doit don installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
+
+Pour installer l'opérateur Grafana:
+
+    
