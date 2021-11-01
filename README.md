@@ -456,8 +456,9 @@ Cette commande va créer les fichiers suivants:
     worker.ign
 
 Il faut ensuite fusionner le contenu de ces fichiers avec les fichiers ign déjà existants de nos noeuds.
-Pour le cluster, on fusionne le fichier bootstrap.ign avec kueb04.ign
-et le fichier master.ign avec les fichiers kueb01.ign. kube02.ign et kube03.ign
+Pour le cluster, on fusionne le fichier bootstrap.ign avec kueb04.ign.
+Le fichier master.ign avec les fichiers kueb01.ign. kube02.ign et kube03.ign
+Finalement le fichier woker.ign est fusionné avec les autres fichiers. Ex. kube05.ign et kube06.ign.
 On dépose ensuite les fichiers dans le répertoire /var/www/html/okd
 
 La partie à fusionner est dans la section storage files. On doit ajouter les fichiers suivants dans le fichier ignition pour la configuration du réseau:
@@ -465,7 +466,8 @@ La partie à fusionner est dans la section storage files. On doit ajouter les fi
     /etc/hostname
     /etc/NetworkManager/system-connections/NOMINTERFACERESEAU.nmconnection
 
-Pour fusionner les fichiers, on peut utiliser la commande jq. Elle permet de partir du fichier fcc et de le combiner avec le fichier ign du rôle du noeud.
+
+Pour fusionner les fichiers, on peut utiliser le script merge-ign.sh inclu dans ce projet. Il permet de partir du fichier fcc et de le combiner avec le fichier ign du rôle du noeud.
 Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les commandes suivantes. A partir du répertoire du projet, on assume que les fichiers ignition des noeuds sont dans le répertoire ~/okd/fedora, que les fichiers du manifest ont été générés dans le répertoire ~/kubernetes/okd/manifest et que le répertoire du serveur web est /var/www/html/okd.
 
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube01.fcc | jq > ~/kubernetes/fedora/kube01.ign
@@ -475,12 +477,12 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube05.fcc | jq > ~/kubernetes/fedora/kube05.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube06.fcc | jq > ~/kubernetes/fedora/kube06.ign
 
-    merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube01.ign
-    merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube02.ign
-    merge-ign.sh ~/kubernetes/fedora/kube03.ign ~/kubernetes/okd/manifest master.ign /var/www/html/okd/kube03.ign
-    merge-ign.sh ~/kubernetes/fedora/kube04.ign ~/kubernetes/okd/manifest bootstrap.ign /var/www/html/okd/kube04.ign
-    merge-ign.sh ~/kubernetes/fedora/kube05.ign ~/kubernetes/okd/manifest worker.ign /var/www/html/okd/kube05.ign
-    merge-ign.sh ~/kubernetes/fedora/kube06.ign ~/kubernetes/okd/manifest worker.ign /var/www/html/okd/kube06.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube01.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube02.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube03.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube03.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube04.ign ~/kubernetes/okd/manifest/bootstrap.ign /var/www/html/okd/kube04.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube05.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube05.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube06.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube06.ign
     
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
@@ -548,7 +550,15 @@ On peut se connecter sur les noeuds en ssh avec la commande:
 
     ssh -i keys/kubelacave-key core@kube01
 
-Un fois le processus de bootstrap terminé, c'est très long ca peut prendre plus de 45 minutes, on doit modifier les entrés DNS suvantes:
+Un fois le processus de bootstrap terminé, c'est très long ca peut prendre plus de 45 minutes, on peut supprimer de bootstrap:
+
+    DISK=/dev/sda
+    ssh root@kube04.lacave "sgdisk --zap-all $DISK; dd if=/dev/zero of="$DISK" bs=1M count=1000 oflag=direct,dsync status=progress; init 0"
+
+Si on a pas mis en place le load balancer, on doit modifier la configuration DNS
+
+NE PAS FAIRE CES ETAPES SI ON A UN LOAD BALANCER COMME DÉCRIT DANS CE DOCUMENT.
+Modifier les entrés DNS suvantes:
 
     kube                    CNAME   bootstrap.kubelacave.kube.lacave.info.
     api.kubelacave.kube     CNAME   bootstrap.kubelacave.kube.lacave.info.
@@ -636,7 +646,7 @@ Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien �
 On utilise les crédentiels qu'on a dans notre fichier .docker/config.json
 https://docs.openshift.com/container-platform/4.8/openshift_images/managing_images/using-image-pull-secrets.html
 
-    oc create secret generic docker-secret --from-file=.dockerconfigjson=/home/felip/.docker/config.json --type=kubernetes.io/dockerconfigjson
+    oc create secret generic docker-secret --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson
     oc secrets link default docker-secret --for=pull
 
 Pour ajouter le secret à la config globale:
@@ -646,7 +656,7 @@ Obtenir la liste des secret de la config:
 
 Ajouter le crédentiel docker.io au fichier globalpullsecret
 
-    oc registry login --registry=docker.io --auth-basic="username:password" --to=globalpullsecret
+    oc registry login --registry=docker.io --auth-basic="$(jq -r '.auths."https://index.docker.io/v1/".auth' ~/.docker/config.json | base64 -d)" --to=globalpullsecret
 
 Mettre à jour la configuration globale:
 
@@ -666,18 +676,18 @@ Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hé
 
 La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires. Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg.
 
-    ssh -i keys/kubelacave-key core@kube01 "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube02 "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube03 "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube05 "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube01.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube02.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube03.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
 
 Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les disques SSD:
 
-    ssh -i keys/kubelacave-key core@kube05 "sudo vgcreate fastvg /dev/sdc"
-    ssh -i keys/kubelacave-key core@kube06 "sudo vgcreate fastvg /dev/sdc"
-    ssh -i keys/kubelacave-key core@kube07 "sudo vgcreate fastvg /dev/sdc"
+    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
 
 #### Installation
 La meilleure manière que j'ai trouvé de l'installer c'est en utilisant les chartes YAML:
@@ -723,7 +733,7 @@ Pour les appliquer:
     kubectl create -f openebs/storage-class-fast.yaml
     kubectl create -f openebs/storage-class-slow.yaml
 
-Pour tester, on peut déployer les pods exemples inclus dans le projetL
+Pour tester, on peut déployer les pods exemples inclus dans le projet.
 
     kubectl create -f openebs/exemple-stockage.yaml
 

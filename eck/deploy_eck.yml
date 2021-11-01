@@ -1,98 +1,59 @@
-- hosts: eck
-  vars:
-    eck_download_url: "https://download.elastic.co/downloads/eck/{{ eck_version | default('1.8.0') }}"
-    eck_crds_manifest_url: "{{ eck_download_url }}/crds.yaml"
-    eck_operator_manifest_url: "{{ eck_download_url }}/operator.yaml"
-  tasks:
-  - name: Créer le namespace pour Elastic
-    k8s:
-      kind: namespace
-      name: elastic-system
-      state: present
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: elasticsearch/eck-elasticsearch-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/eck-elasticsearch-manifest.yaml"
+  when: manifest_dir is defined
 
-  - name: Installer les CRDS pour ECK
-    k8s:                                                                                                                                                                                                             
-      definition: '{{ item }}'                                                                                                                                                                                       
-    with_items: '{{ lookup("url", eck_crds_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
-    when: item is not none
+- name: Installer Elasticsearch avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
+  register: eck_elastic_install_result
 
-  - name: Installer l'opérateur ECK
-    k8s:                                                                                                                                                                                                             
-      definition: '{{ item }}'                                                                                                                                                                                       
-    with_items: '{{ lookup("url", eck_operator_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
-    when: item is not none
-    register: eck_operator_install_result
+- name: Ajouter les privilèges au compte de service
+  command: oc adm policy add-scc-to-user privileged -z {{ project_name }}-elasticsearch -n elastic-system
 
-  - name: Attendre que l'opérateur soit démarré
-    pause:
-      minutes: 2
-    when: eck_operator_install_result is defined and eck_operator_install_result.changed is defined and eck_operator_install_result.changed
+- name: Attendre 2 minutes qu'Elasticsearch soit démarré
+  pause:
+    minutes: 2
+  when: eck_elastic_install_result is defined and eck_elastic_install_result.changed is defined and eck_elastic_install_result.changed
 
-  - name: Ajouter privileged par défaut dans le namespace
-    command: oc adm policy add-scc-to-user privileged -z default -n elastic-system
-  - name: Ajouter anyuid par défaut dans le namespace
-    command: oc adm policy add-scc-to-user anyuid -z default -n elastic-system
-  - name: Ajouter hostmount-anyuid par défaut dans le namespace
-    command: oc adm policy add-scc-to-user hostmount-anyuid -z default -n elastic-system
-  - name: Ajouter hostnetwork par défaut dans le namespace
-    command: oc adm policy add-scc-to-user hostnetwork -z default -n elastic-system
+- name: Obtenir le mot de passe de l'utilisateur elastic
+  shell: 
+    cmd: |
+      kubectl get secret {{ project_name }}-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d
+  register: eck_elastic_password_out
 
-  - name: Générer le manifest dans les artefacts
-    local_action:
-      module: template
-      src: elasticsearch/eck-elasticsearch-manifest.yaml.j2
-      dest: "{{ manifest_dir }}/eck-elasticsearch-manifest.yaml"
-    when: manifest_dir is defined
+- name: Extraire le mot de passe
+  set_fact:
+    eck_elastic_password: "{{ eck_elastic_password_out.stdout }}"
 
-  - name: Installer Elasticsearch avec l'opérateur ECK
-    k8s:
-      state: present
-      definition: "{{ lookup('template','elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
-    register: eck_elastic_install_result
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: kibana/eck-kibana-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/eck-kibana-manifest.yaml"
+  when: manifest_dir is defined
 
-  - name: Ajouter les privilèges au compte de service
-    command: oc adm policy add-scc-to-user privileged -z {{ project_name }}-elasticsearch -n elastic-system
+- name: Installer Kibana avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','kibana/eck-kibana-manifest.yaml.j2') }}"
+  register: eck_kibana_install_result
 
-  - name: Attendre 2 minutes qu'Elasticsearch soit démarré
-    pause:
-      minutes: 2
-    when: eck_elastic_install_result is defined and eck_elastic_install_result.changed is defined and eck_elastic_install_result.changed
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/beats/eck-beats-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/eck-beats-manifest.yaml"
+  when: manifest_dir is defined
 
-  - name: Obtenir le mot de passe de l'utilisateur elastic
-    shell: 
-      cmd: |
-        kubectl get secret {{ project_name }}-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d
-    register: eck_elastic_password_out
+- name: Installer Beats avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','beats/eck-beats-manifest.yaml.j2') }}"
+  register: eck_beats_install_result
 
-  - name: Extraire le mot de passe
-    set_fact:
-      eck_elastic_password: "{{ eck_elastic_password_out.stdout }}"
-
-  - name: Générer le manifest dans les artefacts
-    local_action:
-      module: template
-      src: kibana/eck-kibana-manifest.yaml.j2
-      dest: "{{ manifest_dir }}/eck-kibana-manifest.yaml"
-    when: manifest_dir is defined
-
-  - name: Installer Kibana avec l'opérateur ECK
-    k8s:
-      state: present
-      definition: "{{ lookup('template','kibana/eck-kibana-manifest.yaml.j2') }}"
-    register: eck_kibana_install_result
-
-  - name: Générer le manifest dans les artefacts
-    local_action:
-      module: template
-      src: resources/journalisation/beats/eck-beats-manifest.yaml.j2
-      dest: "{{ manifest_dir }}/eck-beats-manifest.yaml"
-    when: manifest_dir is defined
-
-  - name: Installer Beats avec l'opérateur ECK
-    k8s:
-      state: present
-      definition: "{{ lookup('template','beats/eck-beats-manifest.yaml.j2') }}"
-    register: eck_beats_install_result
-
-  - name: Ajouter les privilèges au compte de service
-    command: oc adm policy add-scc-to-user privileged -z filebeat -n elastic-system
+- name: Ajouter les privilèges au compte de service
+  command: oc adm policy add-scc-to-user privileged -z filebeat -n elastic-system
