@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    prometheusK8s:
+      retention: 7d
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-lvm-localpv-slow
+          resources:
+            requests:
+              storage: 100Gi
+    alertmanagerMain:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-lvm-localpv-slow
+          resources:
+            requests:
+              storage: 10Gi

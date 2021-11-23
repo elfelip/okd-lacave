@@ -714,6 +714,10 @@ L'installation créé par défaut 4 classes de stockage:
 
 La classe openebs-hostpath peut être utilisée telle quelle. Les données sont alors déposé dans le répertoire /var/openebs/local du rootvg des noeuds.
 
+Créer les role bindingns pour Openshift:
+
+    oc apply -f rolebindings.yaml
+
 Installer lvm-localpv
 
     kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
@@ -790,14 +794,11 @@ Création d'un tenant
     Obtenir le crédentiel pour s'authentifier à la console:
         echo $(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_ACCESS_KEY}' | base64 -d):$(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_SECRET_KEY}' | base64 -d)
 
-## Activer le registre d'image
-
-## Journalisation
 
 ## Mise à jour du cluster
 Voici les étapes pour la mise à jour du cluster: https://docs.okd.io/latest/updating/updating-cluster-cli.html
 
-J'ai été obligé de modifier la confdiguration de l'opérateur de mises à jour avec la commande suivante: https://gitmemory.com/issue/openshift/okd/674/857717204
+J'ai été obligé de modifier la configuration de l'opérateur de mises à jour avec la commande suivante: https://gitmemory.com/issue/openshift/okd/674/857717204
 
     oc patch clusterversion/version --patch '{"spec":{"upstream":"https://amd64.origin.releases.ci.openshift.org/graph"}}' --type=merge
 
@@ -835,50 +836,6 @@ Vérifier la progression de la mise à jour:
     NAME      VERSION                         AVAILABLE   PROGRESSING   SINCE   STATUS
     version   4.7.0-0.okd-2021-06-04-191031   True        True          19m     Working towards 4.7.0-0.okd-2021-06-19-191547: 115 of 670 done (17% complete)
 
-# Gestion des bases de données
-
-On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
-
-## Zalando
-
-Un autre opérateur Postgres:
-
-https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
-
-Installation:
-
-    Faire un clone du repository
-        git clone https://github.com/zalando/postgres-operator.git
-    Créer le namespace
-        kubectl create namespace postgres-operator
-    Installer l'opérateur
-        cd postgres-operator
-        helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        oc adm policy add-scc-to-group anyuid system:authenticated
-        oc adm policy add-scc-to-user nonroot -z builder -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
-    Ajouter les droits cluster admin au compte de service postgres-pod
-        kubectl create -f zalando/postgres-pod-cluster-admin.yaml
-
-On peut installer le UI. Optionnel et pas très utile.
-
-    Installer le UI
-        cd postgres-operator
-        helm install postgres-operator-ui ./charts/postgres-operator-ui -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        oc adm policy add-scc-to-user nonroot -z postgres-operator-ui -n postgres-operator
-
-
-On peut créer un cluster de test avec le manifest suivant:
-    
-    kubectl create -f zalando/minimal-postgres-manifest.yaml
-
-Patcher le service pour lui ajouter un pod selector:
-
-    kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
 
 ## Ansible
 
@@ -916,7 +873,7 @@ En fait le but c'est d'ajouter les ca dans le fichier de certificats de confianc
 
 ### Configuration des registres d'images
 
-Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contien le ca de chacunb des registres de confiance et l'ajouter à la configuraiton du cluster.
+Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contient le ca de chacun des registres de confiance et l'ajouter à la configuraiton du cluster.
 Ces étapes ont été automatisé dans le playbook registry/config_registries.yml
 
 La liste des certificats est dans l'inventaire Ansible
@@ -934,7 +891,7 @@ Pour déployer Elasticsearch on utilise l'opérateur ECK.
 
 On le déploie avec Ansible:
 
-    ansible-playbook -i inventory/okd-lacave/hosts eck/deploy_eck.yml
+    ansible-playbook -i inventory/okd-lacave/hosts eck/deploy_operator.yml
 
 Pour obtenir le mot de passe de l'utilisateur elastic:
 
@@ -942,10 +899,62 @@ Pour obtenir le mot de passe de l'utilisateur elastic:
 
 ## Monitoring
 OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
-Il n'est cependant pas possible de créer os propres tableau de bord dans cette instance de Grafana.
+Lors de l'installation initiale, il n'y a pas de configuration spécifiques pour le Monitoring. 
+Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seraon pris en charge par l'opérateur j'imagine.
+Une des première configuraiton à apporter est la configuraitn du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdu a chaque fois que les pods son recréé.
+Pour appliquer le ConfigMap pour le stocjage, exécuter le manifest suivant:
+
+    oc apply -f monitoring/config-manifest.yaml
+
+Ce manifest configure Prometheus et AlertManager pour utiliser la classe de stockage de type SATA. Il configure aussi la rétention des données de Prometheus à 7 jours.
+
+Il n'est cependant pas possible de créer nos propres tableau de bord dans cette instance de Grafana.
 
 On doit don installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
 
 Pour installer l'opérateur Grafana:
 
+# Gestion des bases de données
+
+On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
+
+## Zalando
+
+Un autre opérateur Postgres:
+
+https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
+
+Installation:
+
+    Faire un clone du repository
+        git clone https://github.com/zalando/postgres-operator.git
+    Créer le namespace
+        kubectl create namespace postgres-operator
+    Installer l'opérateur
+        cd postgres-operator
+        helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
+    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
+        # oc adm policy add-scc-to-group anyuid system:authenticated
+        oc adm policy add-scc-to-user nonroot -z builder -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
+        oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
+    Ajouter les droits cluster admin au compte de service postgres-pod
+        kubectl create -f zalando/postgres-pod-cluster-admin.yaml
+
+On peut installer le UI. Optionnel et pas très utile.
+
+    Installer le UI
+        cd postgres-operator
+        helm install postgres-operator-ui ./charts/postgres-operator-ui -n postgres-operator
+    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
+        oc adm policy add-scc-to-user nonroot -z postgres-operator-ui -n postgres-operator
+
+
+On peut créer un cluster de test avec le manifest suivant:
     
+    kubectl create -f zalando/minimal-postgres-manifest.yaml
+
+Patcher le service pour lui ajouter un pod selector:
+
+    kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
