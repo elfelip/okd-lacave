@@ -85,7 +85,7 @@ Installer tftpd
 
 Télécharger les fichiers nécessaire au démarrage d'un noyeaux permettant l'installation pour FCOS
 
-    docker run --privileged -ti --rm -v /srv/tftp:/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
+    sudo docker run --privileged -ti --rm -v /srv/tftp:/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
 
 Copier les fichiers nécessaires dans le répertoire du serveur tftp (pour Ubuntu /srv/tftp)
 
@@ -476,6 +476,8 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube04.fcc | jq > ~/kubernetes/fedora/kube04.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube05.fcc | jq > ~/kubernetes/fedora/kube05.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube06.fcc | jq > ~/kubernetes/fedora/kube06.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube07.fcc | jq > ~/kubernetes/fedora/kube07.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube08.fcc | jq > ~/kubernetes/fedora/kube08.ign
 
     ./merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube01.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube02.ign
@@ -483,6 +485,8 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     ./merge-ign.sh ~/kubernetes/fedora/kube04.ign ~/kubernetes/okd/manifest/bootstrap.ign /var/www/html/okd/kube04.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube05.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube05.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube06.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube06.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube07.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube07.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube08.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube08.ign
     
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
@@ -906,13 +910,47 @@ Pour appliquer le ConfigMap pour le stocjage, exécuter le manifest suivant:
 
     oc apply -f monitoring/config-manifest.yaml
 
-Ce manifest configure Prometheus et AlertManager pour utiliser la classe de stockage de type SATA. Il configure aussi la rétention des données de Prometheus à 7 jours.
+Ce manifest configure les paramêtres suivant:
+    Prometheus et AlertManager utilisent la classe de stockage de type SATA. 
+    La rétention des données de Prometheus est configuré à 7 jours.
+    La surveillance des projets définis par les utilisateurs est activée.
 
-Il n'est cependant pas possible de créer nos propres tableau de bord dans cette instance de Grafana.
+Il n'est pas possible de créer nos propres tableaux de bords avec l'instance par défaut de Grafana.
+Voir article RedHat: https://access.redhat.com/solutions/4543031
+On doit donc installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
 
-On doit don installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
+Avandt d'installer l'opérateur, on doit créer le namespace grafana-operator
 
-Pour installer l'opérateur Grafana:
+    kubectl create namespace grafana-operator
+
+J'ai installé l'opérateur en utilisant la console web: 
+    Operators -> OperatorHub 
+    rechercher Grafana
+    Sélectionner Grafana Operator
+    Install
+    Update channel: v4
+    Installation Mode: A specific namespace on the cluster
+    Installed namespace: grafana-operator
+    Update approval: Automatic
+    Install
+
+Pour pouvoir accéder à Prometheus, on doit créer un nouvel utilisateur/mot de passe dans le secret prometheus-k8s-htpasswd:
+Voici les étapes:
+    Pour Ubuntu, on doit installer le package apache2-utils:
+        sudo apt install apache2-utils
+    Obtenir le fichier htpasswd du secret:
+        oc get secret prometheus-k8s-htpasswd -n openshift-monitoring -o jsonpath='{.data.auth}' | base64 -d > prometheus.htpasswd
+    Ajouter une ligne vide au fichier
+        echo >> prometheus.htpasswd
+    Ajouter un nouvel utilisateur dans le fichier:
+        htpasswd -s -b prometheus.htpasswd grafana-client LeMotDePasse
+    Mettre à jour le secret:
+        oc patch secret prometheus-k8s-htpasswd -p "{\"data\":{\"auth\":\"$(base64 -w0 prometheus.htpasswd)\"}}" -n openshift-monitoring
+    Redémarrer les pods Grafana
+        oc delete pod -l app=prometheus -n openshift-monitoring
+
+
+    
 
 # Gestion des bases de données
 

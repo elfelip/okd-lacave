@@ -1,0 +1,101 @@
+apiVersion: integreatly.org/v1alpha1
+kind: Grafana
+metadata:
+  name: example-grafana
+  namespace: grafana-operator
+spec:
+  ingress:
+    enabled: True
+  dataStorage:
+    class: openebs-lvm-localpv-slow
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  config:
+    log:
+      mode: "console"
+      level: "warn"
+    security:
+      admin_user: "root"
+      admin_password: "secret"
+    auth:
+      disable_login_form: False
+      disable_signout_menu: True
+    auth.anonymous:
+      enabled: True
+  dashboardLabelSelector:
+    - matchExpressions:
+        - { key: app, operator: In, values: [ grafana ] }
+
+---
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDataSource
+metadata:
+  name: example-grafanadatasource
+  namespace: grafana-operator
+spec:
+  datasources:
+    - basicAuthUser: grafana-client
+      access: proxy
+      editable: true
+      secureJsonData:
+        basicAuthPassword: Labo01
+      name: Prometheus
+      url: 'https://prometheus-k8s.openshift-monitoring.svc:9091'
+      jsonData:
+        timeInterval: 5s
+        tlsSkipVerify: true
+      basicAuth: true
+      isDefault: true
+      version: 1
+      type: prometheus
+  name: example-datasources.yaml
+---
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDataSource
+metadata:
+  name: example-thanosdatasource
+  namespace: grafana-operator
+spec:
+  datasources:
+    - access: proxy
+      editable: true
+      isDefault: false
+      secureJsonData:
+        httpHeaderValue1: "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Img3NmhJZnNlbm9rR1BDQ0Z3WnktUllPV3Y5aHBkUmxoVU1mMk1iSkxjcFkifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJncmFmYW5hLW9wZXJhdG9yIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImdyYWZhbmEtc2VydmljZWFjY291bnQtdG9rZW4tMmhxZ2MiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZ3JhZmFuYS1zZXJ2aWNlYWNjb3VudCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjZjMWY3YWJmLWNlZmMtNGFjOC1hZjIyLThmOWMyY2Y5YmM1NyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpncmFmYW5hLW9wZXJhdG9yOmdyYWZhbmEtc2VydmljZWFjY291bnQifQ.PxTxcWch3wSG_UyHhmY_7Y3V3cwIdERmlWM62lEPCyRZjC6nOMNxNEmNF3vhKQugB5kwrf-oEPHYvDa7RRvHnwsGKT3frS1kE8NKzrurNcTeX1Xb1mBVHWncs9MNiEvi6Ca1ploQZg5rPg41BpN-SWPzc65Bc-gHsFy0bBfodKzeka90ye9aaXLrRVRF9GIXqfQ7dtrtrX3_1-NKxo4VkmuQP-jOF_uf_8T21FqeccgsqtJ_1r0DU4ollvR9A6sJMngTvF_CpPFLsv6zaBUgx-0P9K5pvC8tKLAOvLU1NiNq853VxmEMwTyWvnf14NT4Git1KbZw8JGPhOXhxy35R7wOdfn_vwc3CvBrBK_b3zjI2Wx2TxvQhkbgohjveEpHHKLZ72EtEdYm-Yk0xlG3fNk9GjIR7E44n___Srnz_SwNd2rwMB1h2Bi_fuWoiJuEFjzxFLdHm0Cu991gOmgtdroBklybq4ZrSfMWCAVAqN4tJFD32DFHVP-Ds2rfY_fwEAsx1Ya7OTZiiZLrRoI4gsMd6AmAPFx_n-biNg2HBmCd-iSAa0d69gKoaKlWGOMhwjoUyWVwG3CQEVekSMuxBka2WkKgV-t31FJ0riHtRhJI7_GwdRVuxnUZoIXZgctAqZov_jw-p3WKUOXBaOcRluf5Bi54fCBax6F4c90UKxI"
+      name: Prometheus-thanos-querier
+      url: 'https://thanos-querier.openshift-monitoring.svc:9091'
+      jsonData:
+        timeInterval: 5s
+        tlsSkipVerify: true
+        httpHeaderName1: 'Authorization'
+      type: prometheus
+  name: thanos-datasources.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-serviceaccount-cluster-monitoring-view
+  namespace: grafana-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+- kind: ServiceAccount
+  name: grafana-serviceaccount
+  namespace: grafana-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-serviceaccount-thanos-querier
+  namespace: grafana-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: thanos-querier
+subjects:
+- kind: ServiceAccount
+  name: grafana-serviceaccount
+  namespace: grafana-operator

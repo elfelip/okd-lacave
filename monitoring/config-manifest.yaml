@@ -5,6 +5,30 @@ metadata:
   namespace: openshift-monitoring
 data:
   config.yaml: |
+    enableUserWorkload: true
+    prometheusK8s:
+      retention: 7d
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-lvm-localpv-slow
+          resources:
+            requests:
+              storage: 100Gi
+    alertmanagerMain:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-lvm-localpv-slow
+          resources:
+            requests:
+              storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-workload-monitoring-config
+  namespace: openshift-user-workload-monitoring
+data:
+  config.yaml: |
     prometheusK8s:
       retention: 7d
       volumeClaimTemplate:
