@@ -644,6 +644,112 @@ Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien �
     kube06   Ready    worker          16h     v1.20.0+7d0a2b2-1058
     kube07   Ready    worker          15h     v1.20.0+7d0a2b2-1058
 
+### Remplacer un noeud
+
+Il peut arriver qu'un noeud soit a remplacer, soit parce que le disque OS est défectueux ou parce que lq configuration n'est plus à jour et que l'opérateur de configuraiton de machine est incapable de la mettre à jour.
+
+On peut commencer par obtenir la liste des noeuds:
+
+    oc get nodes
+    NAME     STATUS   ROLES    AGE    VERSION
+    kube01   Ready    master   36d    v1.22.3+4dd1b5a
+    kube02   Ready    master   36d    v1.22.3+4dd1b5a
+    kube03   Ready    master   36d    v1.22.3+4dd1b5a
+    kube05   Ready    worker   36d    v1.22.3+4dd1b5a
+    kube06   NotReady worker   4m1s   v1.22.3+4dd1b5a
+    kube07   Ready    worker   12d    v1.22.3+4dd1b5a
+    kube08   Ready    worker   58m    v1.22.3+4dd1b5a
+
+Dans ce cas, on remplace le noeud kube06.
+La première étape des de supprimer le noeud:
+
+    oc delete node kube06
+
+Si le noeud est toujours accessible, se connecter par ssh:
+
+    ssh -i ~okd/auth/kubelacave-key core@kube06
+
+Dans le cas de notre configuraiton des noeuds, on a la topologie de disque suivante:
+
+    /dev/sda1   1M      BIOS boot
+    /dev/sda2   127M    EFI System
+    /dev/sda3   384M    /boot
+    /dev/sda4   XXG     /sysroot
+    /dev/sda5   XXG     fastvg
+    /dev/sdb    XXG     slowvg
+
+Pour réinitialiser ce noeud sans perdre les données des pods, on doit supprimer le contenu des partitions /dev/sda[1-3]. Il est essentiel de conserver les partitions /dev/sda5 et /dev/sdb.
+Le fait de supprimer les données des partitions de démarrage et de base va faire que le noeud var redémarrer sur le PXE boot pour qu'il se réinstalle.
+Pour supprimer les données, lancer les commandes suivantes:
+
+    Valider la configuration des partitions:
+        sudo fdisk /dev/sda
+
+        Welcome to fdisk (util-linux 2.36.2).
+        Changes will remain in memory only, until you decide to write them.
+        Be careful before using the write command.
+
+        Command (m for help): p
+        Disk /dev/sda: 931.51 GiB, 1000204886016 bytes, 1953525168 sectors
+        Disk model: Samsung SSD 870 
+        Units: sectors of 1 * 512 = 512 bytes
+        Sector size (logical/physical): 512 bytes / 512 bytes
+        I/O size (minimum/optimal): 512 bytes / 512 bytes
+        Disklabel type: gpt
+        Disk identifier: B86CAB1C-89A0-4AB7-9023-7677F26D0D40
+
+        Device         Start        End    Sectors  Size Type
+        /dev/sda1       2048       4095       2048    1M BIOS boot
+        /dev/sda2       4096     264191     260096  127M EFI System
+        /dev/sda3     264192    1050623     786432  384M Linux filesystem
+        /dev/sda4    1050624  210765823  209715200  100G Linux filesystem
+        /dev/sda5  210765824 1953525134 1742759311  831G Linux filesystem
+    Supprimer les données de /dev/sda[1-3]
+        sudo dd if=/dev/zero of=/dev/sda1 bs=1M count=1 oflag=dsync,direct status=progress
+        sudo dd if=/dev/zero of=/dev/sda2 bs=1M count=127 oflag=dsync,direct status=progress
+        sudo dd if=/dev/zero of=/dev/sda3 bs=1M count=1000 oflag=dsync,direct status=progress
+    Redémarrer le noeud:
+        sudo init 6
+
+Le serveur devrait démarrer par PXE boot, s'installer et se mettre à jour.
+Surveiller les demandes signature de certifcats comme pour l'ajout d'un nouveau noeud:
+
+    oc get csr
+    NAME        AGE   SIGNERNAME                                    REQUESTOR                                                                   REQUESTEDDURATION   CONDITION
+    csr-2lnr4   54s   kubernetes.io/kube-apiserver-client-kubelet   system:serviceaccount:openshift-machine-config-operator:node-bootstrapper   <none>              Pending
+    csr-l6pfh   67s   kubernetes.io/kube-apiserver-client-kubelet   system:serviceaccount:openshift-machine-config-operator:node-bootstrapper   <none>              Pending
+
+    oc adm certificate approve csr-l6pfh csr-2lnr4
+    
+    oc get csr
+    NAME        AGE    SIGNERNAME                                    REQUESTOR                                                                   REQUESTEDDURATION   CONDITION
+    csr-2lnr4   100s   kubernetes.io/kube-apiserver-client-kubelet   system:serviceaccount:openshift-machine-config-operator:node-bootstrapper   <none>              Approved,Issued
+    csr-l6pfh   113s   kubernetes.io/kube-apiserver-client-kubelet   system:serviceaccount:openshift-machine-config-operator:node-bootstrapper   <none>              Approved,Issued
+    csr-rpbd7   5s     kubernetes.io/kubelet-serving                 system:node:kube06                                                          <none>              Pending
+
+    oc adm certificate approve csr-rpbd7
+    oc get nodes
+    NAME     STATUS     ROLES    AGE   VERSION
+    kube01   Ready      master   36d   v1.22.3+4dd1b5a
+    kube02   Ready      master   36d   v1.22.3+4dd1b5a
+    kube03   Ready      master   36d   v1.22.3+4dd1b5a
+    kube05   Ready      worker   36d   v1.22.3+4dd1b5a
+    kube06   NotReady   worker   24s   v1.22.3+4dd1b5a
+    kube07   Ready      worker   12d   v1.22.3+4dd1b5a
+    kube08   Ready      worker   54m   v1.22.3+4dd1b5a
+
+Après quelques minutes, le noeud devrait être de nouveau Ready:
+
+    oc get nodes
+    NAME     STATUS   ROLES    AGE    VERSION
+    kube01   Ready    master   36d    v1.22.3+4dd1b5a
+    kube02   Ready    master   36d    v1.22.3+4dd1b5a
+    kube03   Ready    master   36d    v1.22.3+4dd1b5a
+    kube05   Ready    worker   36d    v1.22.3+4dd1b5a
+    kube06   Ready    worker   4m1s   v1.22.3+4dd1b5a
+    kube07   Ready    worker   12d    v1.22.3+4dd1b5a
+    kube08   Ready    worker   58m    v1.22.3+4dd1b5a
+
 
 ## Authentification au registres d'images
 
