@@ -11,6 +11,7 @@ Pour déployer un cluster a trois noeuds on a besoin de 4 machines:
     kube05: worker0
     kube06: worker1
     kube07: worker2
+    kube08: worker3
 
 La machine bootstrap est temporaire, c'est celle qui va déployer le cluster sur les autres noeuds.
 
@@ -750,6 +751,12 @@ Après quelques minutes, le noeud devrait être de nouveau Ready:
     kube07   Ready    worker   12d    v1.22.3+4dd1b5a
     kube08   Ready    worker   58m    v1.22.3+4dd1b5a
 
+### Replacement d'un membre du cluster etcd
+
+Juste après la mise à jour du cluster à la version 4.9.0, un des membre du cluster etcd s'est mis en mode CrashLoop.
+
+J'ai suivi les étapes suivantes pour le remplacer:
+https://docs.openshift.com/container-platform/4.9/backup_and_restore/control_plane_backup_and_restore/replacing-unhealthy-etcd-member.html#restore-replace-crashlooping-etcd-member_replacing-unhealthy-etcd-member
 
 ## Authentification au registres d'images
 
@@ -1025,7 +1032,7 @@ Il n'est pas possible de créer nos propres tableaux de bords avec l'instance pa
 Voir article RedHat: https://access.redhat.com/solutions/4543031
 On doit donc installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
 
-Avandt d'installer l'opérateur, on doit créer le namespace grafana-operator
+Avant d'installer l'opérateur, on doit créer le namespace grafana-operator
 
     kubectl create namespace grafana-operator
 
@@ -1102,3 +1109,38 @@ On peut créer un cluster de test avec le manifest suivant:
 Patcher le service pour lui ajouter un pod selector:
 
     kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
+
+## Virtualisation
+Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KVM avec Kubernetes en utilisant Kubevirt.
+
+### Kubevirt Hyper Converged Cluster Operator
+Cet opérateur permet le de gérer des opérateurs de divers type. On l'utilise pour gérer Kubevirt, Conterized Data Importer (CDI), le Virtual Machine Import operator et le cluster network address (CNA) operator.
+
+Pour intaller cet opérateur, utiliser le menu Opertaorts -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
+Cliquer install pour le déployer.
+
+Une fois l'opérateur installer, aller dans Operators -> Installed Operators, sélectionner le projet kubevirt-hyperconverged et cliquer sur KubeVirt HyperConverged Cluster Operator.
+
+Dans l'onglet HyperConverged Cluster Operator Deployment, cliquer sur le bouton Create HyperConverged.
+
+On peut suivre le déploiement des pods dans le namespace kubervirt-hyperconverged:
+
+    kubectl get pods -n kubevirt-hyperconverged
+
+Une fois le déploiement terminé, un nouvel item Virtualization est ajouté dans le menu Workloads de la console Web.
+Dans l'onglet Templates de ce menu, on peut voir que plusieurs gabarits ont été créés par l'opérateur.
+Aucun de ces gabarits ne vient avec des sources de système d'exploitation cependant.
+On peut ajouter des source pour chacune. Dans monc cas, j'ai ajouté un source au gabartit CentOS 8.0+ VM.
+Pour se faire:
+    Cliquer sur ce gabarit.
+    Dans la section Boot source, cliquer sur Add source.
+    Dans Boot source type, sélectionner Import via URL.
+    Dans import URL, mettre l'URL de la source à importer. Dans le ce cas de Centos 8, j'ai utilisé l'image de lURL suivant quie est en format qcow2:
+        https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-20210603.0.x86_64.qcow2
+    Dans Persistent Volume Claim size, laisser 20 Gib pour Centos
+    Dans Source provider, mettre Centos ou autre nom nous permettant d'identifier la source.
+    Cliquer Advanced Storage settings.
+    Dans Storage Class, sélectionner openebs-lvm-localpv-slow
+    Cliquer Save And Import.
+
+
