@@ -47,6 +47,8 @@ spec:
           fsGroup: 0
     version: 3.0.0
     replicas: 3
+    rack:
+      topologyKey: kubernetes.io/hostname
   entityOperator:
     topicOperator: {}
     userOperator: {}
@@ -61,4 +63,14 @@ spec:
         securityContext:
           runAsUser: 0
           fsGroup: 0
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: strimzi.io/name
+                      operator: In
+                      values:
+                        - my-cluster-zookeeper
+                topologyKey: kubernetes.io/hostname
     replicas: 3
