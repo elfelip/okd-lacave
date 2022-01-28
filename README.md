@@ -1143,4 +1143,39 @@ Pour se faire:
     Dans Storage Class, sélectionner openebs-lvm-localpv-slow
     Cliquer Save And Import.
 
+## Kafka
+
+Pour déployer des serveurs Kafka sur Kubernetes, on utilise l'opérateur Strimzi
+
+### Déployer l'opérateur Strimzi
+
+Pour déployer l'oprateur Strimzi, on puet utiliser Operator Hub.
+
+Dans la console OKD, aller dans le menu Operators -> OperatorHub.
+Dans le champ de recherche, écrire strimzi et cliquer sur la tuile Strimzi.
+Show community Operator, cliquer sur Continue
+Cliquer ensuite sur Install et utiliser les paramètres suivants:
+    Update Channel: stable
+    Installation Mode: All namespaces
+    Installed Namepsace: openshift-operators
+    Update approval: Automatic
+Cliquer sur le bouton Install
+
+Une fois l'opérateur déployé, on peut déployer un cluster de tests en utilisant le manifest strimzi/example-cluster-kafka.yaml
+
+    oc apply -f strimzi/example-cluster-kafka.yaml
+
+Cette configuration expose le cluster Kafka sur tous les hôtes du cluster Kubernetes sur les ports 31092, 31093 et 31094
+On peut le tester en utilisant Kafkacat:
+
+    echo test1 | kafkacat -b kube06.lacave.info:31092,kube07.lacave.info:31093,kube08.lacave.info:31094 -P -t test
+    kafkacat -b kube06.lacave.info:31092,kube07.lacave.info:31093,kube08.lacave.info:31094 -C -t test -o beginning
+    
+Pour le supprimer:
+
+    oc delete -f strimzi/example-cluster-kafka.yaml
+
+    
+
+
 
