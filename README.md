@@ -617,20 +617,78 @@ Source: https://docs.okd.io/latest/post_installation_configuration/node-tasks.ht
 Lors de la création des fichier ignition, un fichier worker.ign a été créé.
 On va l'utiliser avec PXE pour démarrer l'installation des nouveaux noeuds.
 
-La première étape est de configurer les fichiers PXE pour les nouveaux noeuds. Par exemple, la l'adresse MAC de la nouvelle machine kube05 est aa:aa:aa:aa:ad, on doit créer le fichier suivant:
+La première étape est de configurer les fichiers PXE pour les nouveaux noeuds. Par exemple, si l'adresse MAC de la nouvelle machine kube05 est 00:aa:aa:aa:ab:ad, on doit créer le fichier /srv/tftp/pxelinux.cfg/1:0:aa:aa:aa:ab:ad suivant:
 
-On doit ensuite copier le fichier worker.ign vers /var/www/html/okd/kube05.ign et y insérer les lignes suivantes:
+    DEFAULT pxeboot
+    TIMEOUT 20
+    PROMPT 0
+    LABEL pxeboot
+        KERNEL fedora-coreos-34.20211031.3.0-live-kernel-x86_64
+        APPEND ip=dhcp rd.neednet=1 initrd=fedora-coreos-34.20211031.3.0-live-initramfs.x86_64.img,fedora-coreos-34.20211031.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://192.168.1.10/okd/kube05.ign coreos.inst.insecure
+    IPAPPEND 2
 
-Répéter ces étapes pour chacun des noeuds à ajouter.
+On doit ensuite créer le fichier /var/www/html/okd/kube05.fcc suivant:
 
-Un fois les noeuds démarré, l'installation de fait automatiquement.
+    variant: fcos
+    version: 1.3.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - LACLERSAPOURSECONNECTERENSSH
+    storage:
+    disks:
+        - device: /dev/sda
+        wipe_table: false
+        partitions:
+            - label: root
+            number: 4
+            # 0 means to use all available space
+            size_mib: 102400
+            resize: true
+            wipe_partition_entry: true
+            - label: data
+            number: 0
+            size_mib: 0
+    files:
+        - path: /etc/NetworkManager/system-connections/eno1.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eno1
 
-Pour accepter les nouveaux noeuds dans le cluster, on doit accepter les requètes de signature de certifcats.
-Premièrement, on peut obtenir la liste des requête avec la commande suivante:
+            [ipv4]
+            method=manual
+            addresses=192.168.1.25/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube05
+
+Ajuster selon l'adresse IP, le nom d'hôte et le type de carte réseau de la machine (eno1).
+
+Il faut ensuite convertir le fichier fcc en fomrat ign avec la commande suivante:
+
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube05.fcc | jq > ~/kubernetes/fedora/kube05.ign
+
+Finbalement on doit fusionner le fichier ign généré pour l'hôte avec le fichier généré par l'installateur de  OKD selon la fonction du noeud. Dans le cas d'une worker, on utilise la commande suivante:
+
+    ./merge-ign.sh ~/kubernetes/fedora/kube05.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube05.ign
+
+Un fois les noeuds démarrés, l'installation se fait automatiquement.
+
+Pour accepter les nouveaux noeuds dans le cluster, on doit accepter les requètes de signatures de certifcats.
+Premièrement, on peut obtenir la liste des requêtes avec la commande suivante:
 
     oc get csr
 
-On accepte les requêtes avec la commande suivantes:
+On accepte les requêtes avec la commande suivante:
 
     oc adm certificate approve id_du_certificat_obtenu_par_la_commande_precedente
 
@@ -1149,7 +1207,7 @@ Pour déployer des serveurs Kafka sur Kubernetes, on utilise l'opérateur Strimz
 
 ### Déployer l'opérateur Strimzi
 
-Pour déployer l'oprateur Strimzi, on puet utiliser Operator Hub.
+Pour déployer l'oprateur Strimzi, on peut utiliser Operator Hub.
 
 Dans la console OKD, aller dans le menu Operators -> OperatorHub.
 Dans le champ de recherche, écrire strimzi et cliquer sur la tuile Strimzi.
@@ -1176,6 +1234,24 @@ Pour le supprimer:
     oc delete -f strimzi/example-cluster-kafka.yaml
 
     
+## Observability
+
+On déploie l'opérateur Jaeger pour recueillir les données d'observabilités des applications. Jaeger permet de recueillir plusieurs métriques permettant d'observer le comportment des applications et aider à identifier des poinds de contentions.
+
+### Opérateur Jaeger
+
+Pour déployer l'oprateur Jaeger, on peut utiliser Operator Hub.
+
+Dans la console OKD, aller dans le menu Operators -> OperatorHub.
+Dans le champ Filter by keyword..., écrire Jaeger et cliquer sur la tuile Community Jaeger Operator.
+Show community Operator, cliquer sur Continue
+Cliquer ensuite sur Install.
+Utiliser les paramètres suivants:
+    Update Channel: stable
+    Installation Mode: All namespaces
+    Installed Namepsace: openshift-operators
+    Update approval: Automatic
+Cliquer sur le bouton Install
 
 
 
