@@ -25,3 +25,9 @@ kube_nodes:
   - name: kube07
     user: core
     key: "{{ kube_node_ssh_key_file }}"
+  - name: kube08
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
+  - name: kube09
+    user: core
+    key: "{{ kube_node_ssh_key_file }}"
