@@ -1,6 +1,5 @@
 - hosts: cert
   vars:
-    cert_manager_namespace: cert-manager
   tasks:
   - name: installer les pré-requis python
     pip:

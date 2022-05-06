@@ -13,3 +13,4 @@ self_signed_pki_ca_cert_file: root-ca.crt
 self_signed_pki_ca_intermediate_file: signing-ca.crt
 trusted_registry_configmap: trustedregistrycas
 nexus_registry_ca_cert: "{{ self_signed_pki_path }}/{{ self_signed_pki_ca_cert_path }}/{{ self_signed_pki_ca_cert_file }}"
+cert_manager_namespace: openshift-operators
