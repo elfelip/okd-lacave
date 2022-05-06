@@ -230,6 +230,12 @@ Pour la configurtation des serveurs, on créé un fichier Yaml.
 
 Pour nos besoins, le fichier contient le user root avec la clé rsa à ajouter à sez authorozed_keys, une adresse IP fixe et un nom d'hôte.
 
+Créer le répertoire ~/kubernetes/fedora
+
+    mkdir -P ~/kubernetes/fedora
+
+Créer les fichiers fcc dans le répertoire ~/kubernetes/fedora
+
 La structure est la suivante pour nos 4 machines:
 
     kube01.fcc
@@ -375,30 +381,30 @@ La première étape est de se créer un répertoire dans lequel mettre les fichi
 
 Pour ce document, j'utilise le répertoire okd
 
-    mkdir ~/okd
+    mkdir -P ~/kubernetes/okd
 
 ### Télécharger les outils
 
 Clients:
 
-    cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.8.0-0.okd-2021-10-10-030117/openshift-client-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
-    tar -zxvf openshift-client-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
+    cd ~/kubernetes/okd
+    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-04-23-131357/openshift-client-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
+    tar -zxvf openshift-client-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
     sudo cp oc /usr/local/bin
     sudo cp kubectl /usr/local/bin
 
 Install:
 
-    cd ~/okd
-    wget https://github.com/openshift/okd/releases/download/4.8.0-0.okd-2021-10-10-030117/openshift-install-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
-    tar -zxvf openshift-install-linux-4.8.0-0.okd-2021-10-10-030117.tar.gz
+    cd ~/kubernetes/okd
+    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-04-23-131357/openshift-install-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
+    tar -zxvf openshift-install-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
 
 
 ### Créer la clé ssh pour l'usager core des noeuds du cluster
 
 On peut décider de créer un pair de clé pour accéder au serveurs du cluster.
 Utililier les commandes suivantes pour créer une clé publique et un clé privé pour se connecter au noeuds du cluster.
-    cd ~/okd
+    cd ~/kubernetes/okd
     mkdir keys
     ssh-keygen -t ed25519 -C "votre@adresse.courriel" -N '' -f keys/kubelacave-key 
 On peut aussi décider d'utiliser cette de notre usager Unix courant qui se trouve dans ~/.ssh/id_rsa.pub
@@ -435,19 +441,31 @@ sshKey: 'Mettre le contenu du fichier keys/kubelacave-key.pub'
 
 Créer le répertoire pour les manifest:
 
-    mkdir -P ~/okd/manifest
+    mkdir -P ~/kubernetes/okd/manifest
 
-Déposer le fichier dans le même répertoire que les outils téléchargés: ~/okd/manifest
+Copier le fichier dans le répertoire ~/kubernetes/okd/manifest
 
 ### Créer le manifest
 Lancer la commande suivante à partir du répertoire contenant les outils et le fichier install-config.yaml
 
-    cd ~/okd
+    cd ~/kubernetes/okd
     ./openshift-install create manifests --dir=manifest
+
+### Copier le fichier kubeconfig
+Pour configurer les client kubectl et oc, on doit copier le nouveau fichier de configuration dans le répertoire $KUBECONFIG
+
+    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
+    mkdir -P ${HOME}/okd/auth/
+    cp ~/kubernetes/okd/manifest/auth/kubeconfig $KUBECONFIG
+
+On peut ajouter la variable dans le fichier .profile ou .bashrc
+
+    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
 
 ### Créer les fichier ignition
 Lancer la commande suivante pour générer les fichier ignition de base pour Fedora CoreOS.
 
+    cd ~/kubernetes/okd
     ./openshift-install create ignition-configs --dir=manifest
 
 Cette commande va créer les fichiers suivants:
@@ -479,6 +497,7 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube06.fcc | jq > ~/kubernetes/fedora/kube06.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube07.fcc | jq > ~/kubernetes/fedora/kube07.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube08.fcc | jq > ~/kubernetes/fedora/kube08.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube09.fcc | jq > ~/kubernetes/fedora/kube09.ign
 
     ./merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube01.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube02.ign
@@ -488,6 +507,7 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     ./merge-ign.sh ~/kubernetes/fedora/kube06.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube06.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube07.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube07.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube08.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube08.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube09.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube09.ign
     
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
@@ -864,36 +884,30 @@ Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les d
     ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
     ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
 
-#### Installation
-La meilleure manière que j'ai trouvé de l'installer c'est en utilisant les chartes YAML:
+#### Instasllation avec OperatorHub
+Installation par OperatorHub
 
-Pour installer l'opérateur OpenEBS:
+Pré-requis:
 
-    kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+    Configure the OpenEBS service account on the openshift-operators namespace/project to use the privileged security context constraint.
 
-J'ai utilisé l'installation par défaut le l'opérateur. Tout est déployé dans le namespace openebs.
-Les approvisionneurs installés sont:
+    Note: The serviceaccount name is same as the one specified in the spec.serviceAccount.name field of the OpenEBSInstallTemplate CR.
 
-    - Device
-    - Host path
-    - Jiva
+    oc adm policy add-scc-to-user privileged system:serviceaccount:openshift-operators:openebs-maya-operator
 
-L'installation créé par défaut 4 classes de stockage:
+    Configure the default service account on the namespace/project in which the volume replicas are deployed to use privileged security context constraint.
 
-    kubectl get storageclass
-    NAME                        PROVISIONER                                                RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-    openebs-device              openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
-    openebs-hostpath            openebs.io/local                                           Delete          WaitForFirstConsumer   false                  98d
-    openebs-jiva-default        openebs.io/provisioner-iscsi                               Delete          Immediate              false                  98d
-    openebs-snapshot-promoter   volumesnapshot.external-storage.k8s.io/snapshot-promoter   Delete          Immediate 
+    oc adm policy add-scc-to-user privileged system:serviceaccount:openshift-operators:default
 
-La classe openebs-hostpath peut être utilisée telle quelle. Les données sont alors déposé dans le répertoire /var/openebs/local du rootvg des noeuds.
+Aller dans OperatorHub, rechercher OpenEBS.
+Cliquer sur Install
+Laisser les valeurs par défaut:
 
-Créer les role bindingns pour Openshift:
+    update channel: alpha
+    All namespace.
+    Déployer dans le namespace openshift-operators
 
-    oc apply -f rolebindings.yaml
-
-Installer lvm-localpv
+#### Installer lvm-operator
 
     kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
     
@@ -1030,9 +1044,24 @@ L'inventaire Ansible de ce projet est dans le répertoire suivant:
 ## Gestion des certificats
 
 ### Installation cert-manager
-Cert Manager peut être installé avec Helm
+Cert Manager est disponible dans OperatorHub.
+Pour l'installer, suivre les étapes suivantes:
 
-L'installation de cert-manager et la création du clusterissuer pour lacave se fait avec Ansible.
+    Créer le namespace cert-manager:
+        kubectl create namespace cert-manager
+    Dans la console OKD, dans la barre de navigation de gauche, sélectionner Operators -> OperatorHub.
+    Dans la boite de recherche écrire cert-manager
+    Cliquer sur l'icône de cert-manager et cliquer sur le bouton Continue pour l'avertissement Community Operator.
+    Cliquer Install.
+    Utiliser les paramètres suivants et cliquer sur Install:
+        Update channel: stable
+        Installation mode: All namespaces on the cluster
+        Installed Namespace: openshift-operator
+        Update approval: Automatic
+
+### Création de l'autorité de certification Self Signed
+La création du clusterissuer pour lacave se fait avec Ansible.
+On doit lancer le playbook à partir de la machine qui contient les fichiers de l'autorité de certification incluant le certificat root-ca et la clé.
 
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_cert_manager.yml
 
