@@ -1063,7 +1063,7 @@ Pour l'installer, suivre les étapes suivantes:
 La création du clusterissuer pour lacave se fait avec Ansible.
 On doit lancer le playbook à partir de la machine qui contient les fichiers de l'autorité de certification incluant le certificat root-ca et la clé.
 
-    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_cert_manager.yml
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_ca_cert.yml
 
 ### Ajouter le ca dans python
 
