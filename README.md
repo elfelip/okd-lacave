@@ -1105,8 +1105,8 @@ Pour obtenir le mot de passe de l'utilisateur elastic:
 OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
 Lors de l'installation initiale, il n'y a pas de configuration spécifiques pour le Monitoring. 
 Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seraon pris en charge par l'opérateur j'imagine.
-Une des première configuraiton à apporter est la configuraitn du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdu a chaque fois que les pods son recréé.
-Pour appliquer le ConfigMap pour le stocjage, exécuter le manifest suivant:
+Une des première configuration à apporter est la configuration du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdus a chaque fois que les pods son recréés.
+Pour appliquer le ConfigMap pour le stockage, exécuter le manifest suivant:
 
     oc apply -f monitoring/config-manifest.yaml
 
@@ -1166,10 +1166,14 @@ Installation:
 
     Faire un clone du repository
         git clone https://github.com/zalando/postgres-operator.git
+    L'idéal est d'untiliser un tag pour le déploiement. Lancer la commande suivante pour avoir la liste des versions disponibles:
+        cd postgres-operator
+        git tag --list
+    Pour choisir une version spécifique (ex. v1.8.0), lancer la commande suivante:
+        git checkout v1.8.0
     Créer le namespace
         kubectl create namespace postgres-operator
     Installer l'opérateur
-        cd postgres-operator
         helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
     Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
         # oc adm policy add-scc-to-group anyuid system:authenticated
@@ -1177,7 +1181,7 @@ Installation:
         oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
         oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
         oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
-    Ajouter les droits cluster admin au compte de service postgres-pod
+    Ajouter les droits cluster admin au compte de service postgres-pod. Revenir dans le répertoire du projet okd-lacave et lancer la commande suivante:
         kubectl create -f zalando/postgres-pod-cluster-admin.yaml
 
 On peut installer le UI. Optionnel et pas très utile.
@@ -1204,11 +1208,20 @@ Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KV
 Cet opérateur permet le de gérer des opérateurs de divers type. On l'utilise pour gérer Kubevirt, Conterized Data Importer (CDI), le Virtual Machine Import operator et le cluster network address (CNA) operator.
 
 Pour intaller cet opérateur, utiliser le menu Opertaorts -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
-Cliquer install pour le déployer.
+Entrer les paramètres suivants et cliquer install pour le déployer:
 
-Une fois l'opérateur installer, aller dans Operators -> Installed Operators, sélectionner le projet kubevirt-hyperconverged et cliquer sur KubeVirt HyperConverged Cluster Operator.
+    Update chanenel: stable
+    Installation Mode: All namespaces
+    Installed namespace: kubevirt-hyperconverged
+    Update Approval: Automatic
+
+
+Une fois l'opérateur installé, aller dans Operators -> Installed Operators, sélectionner le projet kubevirt-hyperconverged et cliquer sur KubeVirt HyperConverged Cluster Operator.
 
 Dans l'onglet HyperConverged Cluster Operator Deployment, cliquer sur le bouton Create HyperConverged.
+Entrer les paramètres suivants:
+    Name: kubevirt-hyperconverged
+    Local Storage Class Name: openebs-lvm-localpv-fast
 
 On peut suivre le déploiement des pods dans le namespace kubervirt-hyperconverged:
 
@@ -1222,7 +1235,7 @@ Pour se faire:
     Cliquer sur ce gabarit.
     Dans la section Boot source, cliquer sur Add source.
     Dans Boot source type, sélectionner Import via URL.
-    Dans import URL, mettre l'URL de la source à importer. Dans le ce cas de Centos 8, j'ai utilisé l'image de lURL suivant quie est en format qcow2:
+    Dans import URL, mettre l'URL de la source à importer. Dans le ce cas de Centos 8, j'ai utilisé l'image de lURL suivant que est en format qcow2:
         https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-20210603.0.x86_64.qcow2
     Dans Persistent Volume Claim size, laisser 20 Gib pour Centos
     Dans Source provider, mettre Centos ou autre nom nous permettant d'identifier la source.
@@ -1283,4 +1296,46 @@ Utiliser les paramètres suivants:
 Cliquer sur le bouton Install
 
 
+
+### Problème avec machine-config-operator
+
+Pour forcer l'utilisation d'une configuraiton quand le Machine Config Pool est à degraded avec le message d'erreur des noeud qui essais de charger une configuration qui n'existe plus.
+
+On peut obtenir l'état du pool avec la commande suivante:
+
+    oc get mcp
+    NAME     CONFIG                                             UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
+    master   rendered-master-f19d4da1fbf529e46c6f638641523b64   False     True       True       3              0                   0                     0                      5h55m
+    worker   rendered-worker-71b5097cc4f58455029da508f43c3d76   True      False      False      5              5                   5                     0                      23h
+
+L'erreur sur le noeud est le suivant:
+
+    rendered-master-38c595269722c7ff797f230b19c96649 not found
+
+Sur chacun des noeuds du pool, créer le fichier suivant:
+
+    ssh -i ~/okd/auth/kubelacave-key core@$NODE touch /run/machine-config-daemon-force
+
+Créer le machine-config manquant en copiant un machine-config existant, en cheageant son nom et en enlevant la meta informations:
+
+    oc get mc rendered-master-f19d4da1fbf529e46c6f638641523b64 -o yaml > rendered-master-f19d4da1fbf529e46c6f638641523b64.yaml
+    cp rendered-master-f19d4da1fbf529e46c6f638641523b64.yaml rendered-master-b184bc3850f838652415269eece58025.yaml
+    vi rendered-master-b184bc3850f838652415269eece58025.yaml
+    Renommer et supprimer les metadonnées.
+    oc apply -f rendered-master-b184bc3850f838652415269eece58025.yaml
+
+Modifier les noeuds
+
+    oc edit node kube01
+    Modifier la partie suivante, suavegarder et quitter
+        machineconfiguration.openshift.io/reason: ""
+        machineconfiguration.openshift.io/state: Done
+    Les noeuds ainso modifié se metterons à jour et redémarrerons.
+
+Le pool devrait redevenir valide:
+
+    oc get mcp
+    NAME     CONFIG                                             UPDATED   UPDATING   DEGRADED   MACHINECOUNT   READYMACHINECOUNT   UPDATEDMACHINECOUNT   DEGRADEDMACHINECOUNT   AGE
+    master   rendered-master-f19d4da1fbf529e46c6f638641523b64   True      False      False      3              3                   3                     0                      5h55m
+    worker   rendered-worker-71b5097cc4f58455029da508f43c3d76   True      False      False      5              5                   5                     0                      23h
 
