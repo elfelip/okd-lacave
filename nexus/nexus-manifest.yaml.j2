@@ -2,23 +2,23 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: nexus-{{ project_name }}
+    name: {{ nexus_namespace }}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: nexus-{{ project_name }}-service-account
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: nexus-{{ project_name }}-anyuid
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
 subjects:
 - kind: ServiceAccount
   name: nexus-{{ project_name }}-service-account
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
 roleRef:
   kind: ClusterRole
   name: system:openshift:scc:anyuid
@@ -29,7 +29,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: docker-{{ project_name }}-tls
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
 spec:
   secretName: docker-{{ project_name }}-tls
   issuerRef:
@@ -49,7 +49,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: nexus-{{ project_name }}-tls
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
 spec:
   secretName: nexus-{{ project_name }}-tls
   issuerRef:
@@ -68,7 +68,7 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
     name: nexus3-data-claim
-    namespace: nexus-{{ project_name }}
+    namespace: {{ nexus_namespace }}
     labels:
         app: nexus
 spec:
@@ -82,7 +82,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
   name: nexus-{{ project_name }}
   labels:
     app: nexus
@@ -137,7 +137,7 @@ spec:
     apiVersion: v1
     kind: Service
     metadata:
-        namespace: nexus-{{ project_name }}
+        namespace: {{ nexus_namespace }}
         name: nexus-service
     spec:
         selector:
@@ -156,7 +156,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    namespace: nexus-{{ project_name }}
+    namespace: {{ nexus_namespace }}
     name: nexus-{{ project_name }}
     annotations:
       route.openshift.io/termination: edge
@@ -184,7 +184,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  namespace: nexus-{{ project_name }}
+  namespace: {{ nexus_namespace }}
   name: docker-nexus-{{ project_name }}
   annotations:
 spec:

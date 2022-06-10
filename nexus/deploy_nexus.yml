@@ -1,5 +1,6 @@
 - hosts: nexus
   vars:
+    nexus_namespace: nexus-{{ project_name }}
   tasks:
   - name: Générer le manifest dans les artefacts
     local_action:
@@ -19,7 +20,7 @@
   - name: Afficher le mot de passe admin du Nexus
     shell: 
       cmd: |
-        kubectl exec --namespace=nexus -it $(kubectl get pod -l "app=nexus" --namespace=nexus -o jsonpath='{.items[0].metadata.name}') -- cat /nexus-data/admin.password
+        kubectl exec --namespace=nexus -it $(kubectl get pod -l "app=nexus" --namespace={{ nexus_namespace }} -o jsonpath='{.items[0].metadata.name}') -- cat /nexus-data/admin.password
     register: nexus_password_out
     ignore_errors: yes
   - name: Extraire le mot de passe
