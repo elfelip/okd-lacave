@@ -101,10 +101,26 @@ spec:
         {{ nexus_node_label }}
 {% endif %}
       serviceAccountName: nexus-{{ project_name }}-service-account
-      securityContext:
-        runAsUser: 0
-        runAsGroup: 0
-        fsGroup: 0
+      initContainers:
+        - name: setup
+          image: alpine
+          command:
+            - /bin/sh
+            - '-c'
+            - >
+              chown -R 200:200 /nexus-data
+          resources: {}
+          volumeMounts:
+            - name: nexus-data
+              mountPath: /nexus-data
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+          serviceAccountName: nexus-{{ project_name }}-service-account
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            fsGroup: 0
       volumes:
       - name: nexus-data
         persistentVolumeClaim:
