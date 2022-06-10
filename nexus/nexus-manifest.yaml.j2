@@ -160,7 +160,8 @@ spec:
         backend:
           service:
             name: nexus-service
-            port: 8081
+            port:
+              number: 8081
 {% endif %}
 {% if nexus_docker_repository_url is defined %}
 ---
@@ -184,5 +185,6 @@ spec:
         backend:
           service:
             name: nexus-service
-            port: 5000
+            port:
+              number: 5000
 {% endif %}
