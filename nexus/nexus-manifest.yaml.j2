@@ -157,8 +157,9 @@ spec:
       paths:
       - path: /
         backend:
-          serviceName: nexus-service
-          servicePort: 8081
+          service:
+            name: nexus-service
+            port: 8081
 {% endif %}
 {% if nexus_docker_repository_url is defined %}
 ---
@@ -179,6 +180,7 @@ spec:
       paths:
       - path: /
         backend:
-          serviceName: nexus-service
-          servicePort: 5000
+          service:
+            name: nexus-service
+            port: 5000
 {% endif %}
