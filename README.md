@@ -1339,3 +1339,9 @@ Le pool devrait redevenir valide:
     master   rendered-master-f19d4da1fbf529e46c6f638641523b64   True      False      False      3              3                   3                     0                      5h55m
     worker   rendered-worker-71b5097cc4f58455029da508f43c3d76   True      False      False      5              5                   5                     0                      23h
 
+# Nexus
+
+Pour gérer les artefacts on peut déployer un serveur Nexus sur le cluster kubernetes
+On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
+
+    ansible-playbook --vault-id /etc/ansible/password -i inventory/okd-lacave/hosts

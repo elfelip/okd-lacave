@@ -1,0 +1,163 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: nexus-{{ project_name }}
+{% if nexus_docker_repository_url is defined %}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: docker-{{ project_name }}-tls
+  namespace: nexus-{{ project_name }}
+spec:
+  secretName: docker-{{ project_name }}-tls
+  issuerRef:
+    name: ca-{{ project_name }}-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: {{ nexus_docker_repository_url }}
+  organization:
+  - {{ project_name }} CA
+  dnsNames:
+  - {{ nexus_docker_repository_url }}
+{% endif %}
+{% if nexus_repository_url is defined %}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nexus-{{ project_name }}-tls
+  namespace: nexus-{{ project_name }}
+spec:
+  secretName: nexus-{{ project_name }}-tls
+  issuerRef:
+    name: ca-{{ project_name }}-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: {{ nexus_repository_url }}
+  organization:
+  - {{ project_name }} CA
+  dnsNames:
+  - {{ nexus_repository_url }}        
+{% endif %}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: nexus-{{ project_name }}
+  name: nexus-deployment
+  labels:
+    app: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+{% if nexus_node_label is defined %}
+      nodeSelector:
+        {{ nexus_node_label }}
+{% endif %}
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      volumes:
+      - name: nexus-data
+        persistentVolumeClaim:
+          claimName: nexus3-data-claim
+      containers:
+      - name: nexus
+        image: sonatype/nexus3:latest
+        ports:
+        - containerPort: 8081
+        volumeMounts:
+        - name: nexus-ceph-data
+          mountPath: /nexus-data
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+    name: nexus3-ceph-claim
+    namespace: nexus-{{ project_name }}
+    labels:
+        app: nexus
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+        requests:
+            storage: 2Ti
+    storageClassName: {{ nexus_storage_class | default('openebs-lvm-localpv-slow') }}
+---
+    apiVersion: v1
+    kind: Service
+    metadata:
+        namespace: nexus-{{ project_name }}
+        name: nexus-service
+    spec:
+        selector:
+            app: nexus
+        ports:
+        - name: web
+          protocol: TCP
+          port: 8081
+          targetPort: 8081
+        - name: docker
+          protocol: TCP
+          port: 5000
+          targetPort: 5000
+{% if nexus_repository_url is defined %}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    namespace: nexus-{{ project_name }}
+    name: nexus-{{ project_name }}
+    annotations:
+      route.openshift.io/termination: edge
+      haproxy.router.openshift.io/timeout: 300s
+      cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
+spec:
+  tls:
+  - hosts:
+    - {{ nexus_repository_url }}
+    secretName: nexus-{{ project_name }}-tls
+  rules:
+  - host: {{ nexus_repository_url }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 8081
+{% endif %}
+{% if nexus_docker_repository_url is defined %}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: nexus-{{ project_name }}
+  name: docker-nexus-{{ project_name }}
+  annotations:
+spec:
+  tls:
+  - hosts:
+    - {{ nexus_docker_repository_url }}
+    secretName: docker-{{ project_name }}-tls
+  rules:
+  - host: {{ nexus_docker_repository_url }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 5000
+{% endif %}
