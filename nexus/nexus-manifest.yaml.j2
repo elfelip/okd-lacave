@@ -3,6 +3,26 @@ apiVersion: v1
 kind: Namespace
 metadata:
     name: nexus-{{ project_name }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: nexus-{{ project_name }}-service-account
+  namespace: nexus-{{ project_name }}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nexus-{{ project_name }}-anyuid
+  namespace: nexus-{{ project_name }}
+subjects:
+- kind: ServiceAccount
+  name: nexus-{{ project_name }}-service-account
+  namespace: nexus-{{ project_name }}
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+  apiGroup: rbac.authorization.k8s.io
 {% if nexus_docker_repository_url is defined %}
 ---
 apiVersion: cert-manager.io/v1
@@ -44,11 +64,26 @@ spec:
   - {{ nexus_repository_url }}        
 {% endif %}
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+    name: nexus3-data-claim
+    namespace: nexus-{{ project_name }}
+    labels:
+        app: nexus
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+        requests:
+            storage: 2Ti
+    storageClassName: {{ nexus_storage_class | default('openebs-lvm-localpv-slow') }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: nexus-{{ project_name }}
-  name: nexus-deployment
+  name: nexus-{{ project_name }}
   labels:
     app: nexus
 spec:
@@ -65,6 +100,7 @@ spec:
       nodeSelector:
         {{ nexus_node_label }}
 {% endif %}
+      serviceAccountName: nexus-{{ project_name }}-service-account
       securityContext:
         runAsUser: 0
         runAsGroup: 0
@@ -79,23 +115,8 @@ spec:
         ports:
         - containerPort: 8081
         volumeMounts:
-        - name: nexus-ceph-data
+        - name: nexus-data
           mountPath: /nexus-data
----
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-    name: nexus3-ceph-claim
-    namespace: nexus-{{ project_name }}
-    labels:
-        app: nexus
-spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-        requests:
-            storage: 2Ti
-    storageClassName: {{ nexus_storage_class | default('openebs-lvm-localpv-slow') }}
 ---
     apiVersion: v1
     kind: Service
