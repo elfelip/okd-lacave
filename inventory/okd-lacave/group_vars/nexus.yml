@@ -1,6 +1,6 @@
 nexus_repository_url: "nexus.{{ kube_routes_domain }}"
 nexus_docker_repository_url: "docker.{{ kube_routes_domain }}"
-nexus_node_label: kubernetes.io/hostname=kube09
+nexus_node_label: "kubernetes.io/hostname: kube09"
 
 nexus_admin_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
