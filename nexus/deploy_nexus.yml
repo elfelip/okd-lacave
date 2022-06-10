@@ -6,6 +6,7 @@
       module: template
       src: nexus-manifest.yaml.j2
       dest: "{{ manifest_dir }}/nexus-manifest.yaml"
+    when: manifest_dir is defined
   - name: Déployer le dépôt Nexus
     k8s:                                                                                                                                                                                                             
       state: present
