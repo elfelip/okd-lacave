@@ -930,8 +930,8 @@ Voici les classes à créer
 
 Pour les appliquer:
 
-    kubectl create -f openebs/storage-class-fast.yaml
-    kubectl create -f openebs/storage-class-slow.yaml
+    kubectl apply -f openebs/storage-class-fast.yaml
+    kubectl apply -f openebs/storage-class-slow.yaml
 
 Pour tester, on peut déployer les pods exemples inclus dans le projet.
 
@@ -942,8 +942,6 @@ On peut les supprimer avec la commande suivante:
     kubectl delete -f openebs/exemple-stockage.yaml
 
 Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire les volumes logiques de sur les hôtes.
-
-Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
 
 ### Minio
 On a pas utilisé minio dans la POC

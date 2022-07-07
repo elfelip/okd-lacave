@@ -12,7 +12,7 @@ reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowedTopologies:
 - matchLabelExpressions:
-  - key: openebs.io/nodename
+  - key: kubernetes.io/hostname
     values:
       - kube05
       - kube06
