@@ -1175,8 +1175,8 @@ Installation:
     L'idéal est d'untiliser un tag pour le déploiement. Lancer la commande suivante pour avoir la liste des versions disponibles:
         cd postgres-operator
         git tag --list
-    Pour choisir une version spécifique (ex. v1.8.0), lancer la commande suivante:
-        git checkout v1.8.0
+    Pour choisir une version spécifique (ex. v1.8.2), lancer la commande suivante:
+        git checkout v1.8.2
     Créer le namespace
         kubectl create namespace postgres-operator
     Installer l'opérateur
@@ -1207,13 +1207,17 @@ Patcher le service pour lui ajouter un pod selector:
 
     kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
 
+On peut supprimer le cluster Postgres avec la commande suivante:
+
+    kubectl delete -f zalando/minimal-postgres-manifest.yaml
+
 ## Virtualisation
 Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KVM avec Kubernetes en utilisant Kubevirt.
 
 ### Kubevirt Hyper Converged Cluster Operator
 Cet opérateur permet le de gérer des opérateurs de divers type. On l'utilise pour gérer Kubevirt, Conterized Data Importer (CDI), le Virtual Machine Import operator et le cluster network address (CNA) operator.
 
-Pour intaller cet opérateur, utiliser le menu Opertaorts -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
+Pour intaller cet opérateur, utiliser le menu Operators -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
 Entrer les paramètres suivants et cliquer install pour le déployer:
 
     Update chanenel: stable
@@ -1308,7 +1312,7 @@ On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
 
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dir=/tmp nexus/deploy_nexus.yml
 
-Le modtde passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
+Le mot de passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
 
 # Problèmes et solutions
 
