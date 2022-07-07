@@ -86,6 +86,7 @@ Installer tftpd
 
 Télécharger les fichiers nécessaire au démarrage d'un noyeaux permettant l'installation pour FCOS
 
+    docker pull quay.io/coreos/coreos-installer:release
     sudo docker run --privileged -ti --rm -v /srv/tftp:/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
 
 Copier les fichiers nécessaires dans le répertoire du serveur tftp (pour Ubuntu /srv/tftp)
@@ -388,16 +389,16 @@ Pour ce document, j'utilise le répertoire okd
 Clients:
 
     cd ~/kubernetes/okd
-    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-04-23-131357/openshift-client-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
-    tar -zxvf openshift-client-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-06-24-212905/openshift-client-linux-4.10.0-0.okd-2022-06-24-212905.tar.gz
+    tar -zxvf openshift-client-linux-4.10.0-0.okd-2022-06-24-212905.tar.gz
     sudo cp oc /usr/local/bin
     sudo cp kubectl /usr/local/bin
 
 Install:
 
     cd ~/kubernetes/okd
-    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-04-23-131357/openshift-install-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
-    tar -zxvf openshift-install-linux-4.10.0-0.okd-2022-04-23-131357.tar.gz
+    wget https://github.com/openshift/okd/releases/download/4.10.0-0.okd-2022-06-24-212905/openshift-install-linux-4.10.0-0.okd-2022-06-24-212905.tar.gz
+    tar -zxvf openshift-install-linux-4.10.0-0.okd-2022-06-24-212905.tar.gz
 
 
 ### Créer la clé ssh pour l'usager core des noeuds du cluster
@@ -441,7 +442,7 @@ sshKey: 'Mettre le contenu du fichier keys/kubelacave-key.pub'
 
 Créer le répertoire pour les manifest:
 
-    mkdir -P ~/kubernetes/okd/manifest
+    mkdir -p ~/kubernetes/okd/manifest
 
 Copier le fichier dans le répertoire ~/kubernetes/okd/manifest
 
@@ -498,6 +499,7 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube07.fcc | jq > ~/kubernetes/fedora/kube07.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube08.fcc | jq > ~/kubernetes/fedora/kube08.ign
     docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube09.fcc | jq > ~/kubernetes/fedora/kube09.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < ~/kubernetes/fedora/kube10.fcc | jq > ~/kubernetes/fedora/kube10.ign
 
     ./merge-ign.sh ~/kubernetes/fedora/kube01.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube01.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube02.ign ~/kubernetes/okd/manifest/master.ign /var/www/html/okd/kube02.ign
@@ -508,6 +510,7 @@ Pour le cluster a 5 noeuds dont 3 masters, 1 bootstrap et 2 workers on lance les
     ./merge-ign.sh ~/kubernetes/fedora/kube07.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube07.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube08.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube08.ign
     ./merge-ign.sh ~/kubernetes/fedora/kube09.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube09.ign
+    ./merge-ign.sh ~/kubernetes/fedora/kube10.ign ~/kubernetes/okd/manifest/worker.ign /var/www/html/okd/kube10.ign
     
 
 On doit modifier les fichiers de configurations pxe de chacun des noeuds pour utiliser le bon fichier ign: http://192.168.1.10/okd/kube0X.ign
@@ -761,6 +764,7 @@ Pour réinitialiser ce noeud sans perdre les données des pods, on doit supprime
 Le fait de supprimer les données des partitions de démarrage et de base va faire que le noeud var redémarrer sur le PXE boot pour qu'il se réinstalle.
 Pour supprimer les données, lancer les commandes suivantes:
 
+    NE PAS FAIRE LE sgdisk --zap-all DANS CETTE SITUATION
     Valider la configuration des partitions:
         sudo fdisk /dev/sda
 
@@ -1327,7 +1331,7 @@ Créer le machine-config manquant en copiant un machine-config existant, en chea
 Modifier les noeuds
 
     oc edit node kube01
-    Modifier la partie suivante, suavegarder et quitter
+    Modifier la partie suivante, sauvegarder et quitter
         machineconfiguration.openshift.io/reason: ""
         machineconfiguration.openshift.io/state: Done
     Les noeuds ainso modifié se metterons à jour et redémarrerons.
@@ -1344,4 +1348,7 @@ Le pool devrait redevenir valide:
 Pour gérer les artefacts on peut déployer un serveur Nexus sur le cluster kubernetes
 On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
 
-    ansible-playbook --vault-id /etc/ansible/password -i inventory/okd-lacave/hosts
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dir=/tmp nexus/deploy_nexus.yml
+
+Le modtde passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
+
