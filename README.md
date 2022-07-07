@@ -576,12 +576,12 @@ Un fois les 3 noeuds master disponible, on peut surveiller l'état d'avancement 
 
 On peut se connecter sur les noeuds en ssh avec la commande:
 
-    ssh -i keys/kubelacave-key core@kube01
+    ssh -i keys/kubelacave-key core@kube01.lacave.info
 
 Un fois le processus de bootstrap terminé, c'est très long ca peut prendre plus de 45 minutes, on peut supprimer de bootstrap:
 
     DISK=/dev/sda
-    ssh root@kube04.lacave "sgdisk --zap-all $DISK; dd if=/dev/zero of="$DISK" bs=1M count=1000 oflag=direct,dsync status=progress; init 0"
+    ssh root@kube04.lacave.info "sgdisk --zap-all $DISK; dd if=/dev/zero of="$DISK" bs=1M count=1000 oflag=direct,dsync status=progress; init 0"
 
 Si on a pas mis en place le load balancer, on doit modifier la configuration DNS
 
@@ -1299,7 +1299,16 @@ Utiliser les paramètres suivants:
     Update approval: Automatic
 Cliquer sur le bouton Install
 
+## Nexus
 
+Pour gérer les artefacts on peut déployer un serveur Nexus sur le cluster kubernetes
+On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
+
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dir=/tmp nexus/deploy_nexus.yml
+
+Le modtde passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
+
+# Problèmes et solutions
 
 ### Problème avec machine-config-operator
 
@@ -1312,21 +1321,51 @@ On peut obtenir l'état du pool avec la commande suivante:
     master   rendered-master-f19d4da1fbf529e46c6f638641523b64   False     True       True       3              0                   0                     0                      5h55m
     worker   rendered-worker-71b5097cc4f58455029da508f43c3d76   True      False      False      5              5                   5                     0                      23h
 
+On peut obtenir l'erreur avec la commande suivante:
+
+    oc describe mcp $NOM_DU_MCP
+    Message:               Node kube02 is reporting: "machineconfig.machineconfiguration.openshift.io \"rendered-master-63b20f461810c3b4918235ef46401ca0\" not found", Node kube01 is reporting: "machineconfig.machineconfiguration.openshift.io \"rendered-master-63b20f461810c3b4918235ef46401ca0\" not found", Node kube03 is reporting: "machineconfig.machineconfiguration.openshift.io \"rendered-master-63b20f461810c3b4918235ef46401ca0\" not found"
+
 L'erreur sur le noeud est le suivant:
 
-    rendered-master-38c595269722c7ff797f230b19c96649 not found
+    rendered-master-63b20f461810c3b4918235ef46401ca0 not found
 
 Sur chacun des noeuds du pool, créer le fichier suivant:
 
     ssh -i ~/okd/auth/kubelacave-key core@$NODE touch /run/machine-config-daemon-force
 
+Obtenir le nom de la config existante pour le pool:
+
+    oc get mc
+    NAME                                               GENERATEDBYCONTROLLER                      IGNITIONVERSION   AGE
+    00-master                                          7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    00-worker                                          7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    01-master-container-runtime                        7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    01-master-kubelet                                  7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    01-worker-container-runtime                        7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    01-worker-kubelet                                  7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    99-master-generated-crio-seccomp-use-default                                                  3.2.0             4h6m
+    99-master-generated-registries                     7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    99-master-okd-extensions                                                                      3.2.0             4h39m
+    99-master-ssh                                                                                 3.2.0             4h39m
+    99-okd-master-disable-mitigations                                                             3.2.0             4h39m
+    99-okd-worker-disable-mitigations                                                             3.2.0             4h39m
+    99-worker-generated-crio-seccomp-use-default                                                  3.2.0             4h6m
+    99-worker-generated-registries                     7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    99-worker-okd-extensions                                                                      3.2.0             4h39m
+    99-worker-ssh                                                                                 3.2.0             4h39m
+    rendered-master-8df24478056eb0597c37c0c245c9d367   7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+    rendered-worker-dfc399bd20b5af7a6306453c12da9934   7152adb176e7ff4bf6c1d3a2e7b0aae4fd2794b6   3.2.0             4h6m
+
+Dans ce cas la config valide pour le pool déterioré est rendered-master-8df24478056eb0597c37c0c245c9d367
+
 Créer le machine-config manquant en copiant un machine-config existant, en cheageant son nom et en enlevant la meta informations:
 
-    oc get mc rendered-master-f19d4da1fbf529e46c6f638641523b64 -o yaml > rendered-master-f19d4da1fbf529e46c6f638641523b64.yaml
-    cp rendered-master-f19d4da1fbf529e46c6f638641523b64.yaml rendered-master-b184bc3850f838652415269eece58025.yaml
-    vi rendered-master-b184bc3850f838652415269eece58025.yaml
+    oc get mc rendered-master-8df24478056eb0597c37c0c245c9d367 -o yaml > rendered-master-8df24478056eb0597c37c0c245c9d367.yaml
+    cp rendered-master-8df24478056eb0597c37c0c245c9d367.yaml rendered-master-63b20f461810c3b4918235ef46401ca0.yaml
+    vi rendered-master-63b20f461810c3b4918235ef46401ca0.yaml
     Renommer et supprimer les metadonnées.
-    oc apply -f rendered-master-b184bc3850f838652415269eece58025.yaml
+    oc apply -f rendered-master-63b20f461810c3b4918235ef46401ca0.yaml
 
 Modifier les noeuds
 
@@ -1343,12 +1382,4 @@ Le pool devrait redevenir valide:
     master   rendered-master-f19d4da1fbf529e46c6f638641523b64   True      False      False      3              3                   3                     0                      5h55m
     worker   rendered-worker-71b5097cc4f58455029da508f43c3d76   True      False      False      5              5                   5                     0                      23h
 
-# Nexus
-
-Pour gérer les artefacts on peut déployer un serveur Nexus sur le cluster kubernetes
-On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
-
-    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dir=/tmp nexus/deploy_nexus.yml
-
-Le modtde passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
 
