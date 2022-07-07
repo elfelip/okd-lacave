@@ -1051,8 +1051,6 @@ L'inventaire Ansible de ce projet est dans le répertoire suivant:
 Cert Manager est disponible dans OperatorHub.
 Pour l'installer, suivre les étapes suivantes:
 
-    Créer le namespace cert-manager:
-        kubectl create namespace cert-manager
     Dans la console OKD, dans la barre de navigation de gauche, sélectionner Operators -> OperatorHub.
     Dans la boite de recherche écrire cert-manager
     Cliquer sur l'icône de cert-manager et cliquer sur le bouton Continue pour l'avertissement Community Operator.
@@ -1067,7 +1065,10 @@ Pour l'installer, suivre les étapes suivantes:
 La création du clusterissuer pour lacave se fait avec Ansible.
 On doit lancer le playbook à partir de la machine qui contient les fichiers de l'autorité de certification incluant le certificat root-ca et la clé.
 
-    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_ca_cert.yml
+    Créer le namespace cert-manager:
+        kubectl create namespace cert-manager
+    Créer le culter issuer
+        ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_ca_cert.yml
 
 ### Ajouter le ca dans python
 
