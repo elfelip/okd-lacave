@@ -576,7 +576,7 @@ Un fois les 3 noeuds master disponible, on peut surveiller l'état d'avancement 
 
 On peut se connecter sur les noeuds en ssh avec la commande:
 
-    ssh -i keys/kubelacave-key core@kube01.lacave.info
+    ssh -i ~/okd/auth/kubelacave-key core@kube01.lacave.info
 
 Un fois le processus de bootstrap terminé, c'est très long ca peut prendre plus de 45 minutes, on peut supprimer de bootstrap:
 
@@ -875,18 +875,21 @@ Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hé
 
 La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires. Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg.
 
-    ssh -i keys/kubelacave-key core@kube01.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube02.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube03.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube08.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube09.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i ~/okd/auth/kubelacave-key core@kube10.lacave.info "sudo vgcreate slowvg /dev/sdb"
 
 Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les disques SSD:
 
-    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube08.lacave.info "sudo vgcreate slowvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube09.lacave.info "sudo vgcreate slowvg /dev/sda5"
+    ssh -i ~/okd/auth/kubelacave-key core@kube10.lacave.info "sudo vgcreate slowvg /dev/sda5"
 
 #### Instasllation avec OperatorHub
 Installation par OperatorHub

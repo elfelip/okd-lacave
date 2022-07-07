@@ -14,7 +14,9 @@ allowedTopologies:
 - matchLabelExpressions:
   - key: openebs.io/nodename
     values:
-      - kube03
       - kube05
       - kube06
       - kube07
+      - kube08
+      - kube09
+      - kube10
