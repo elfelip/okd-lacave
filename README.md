@@ -452,17 +452,6 @@ Lancer la commande suivante à partir du répertoire contenant les outils et le 
     cd ~/kubernetes/okd
     ./openshift-install create manifests --dir=manifest
 
-### Copier le fichier kubeconfig
-Pour configurer les client kubectl et oc, on doit copier le nouveau fichier de configuration dans le répertoire $KUBECONFIG
-
-    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
-    mkdir -P ${HOME}/okd/auth/
-    cp ~/kubernetes/okd/manifest/auth/kubeconfig $KUBECONFIG
-
-On peut ajouter la variable dans le fichier .profile ou .bashrc
-
-    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
-
 ### Créer les fichier ignition
 Lancer la commande suivante pour générer les fichier ignition de base pour Fedora CoreOS.
 
@@ -533,6 +522,17 @@ S'il y a un système d'exploitation sur les noeuds, il peut être nécessaire de
     sudo sgdisk --zap-all $DISK
     # Clean hdds with dd
     sudo dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+
+### Copier le fichier kubeconfig
+Pour configurer les client kubectl et oc, on doit copier le nouveau fichier de configuration dans le répertoire $KUBECONFIG
+
+    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
+    mkdir -P ${HOME}/okd/auth/
+    cp ~/kubernetes/okd/manifest/auth/kubeconfig $KUBECONFIG
+
+On peut ajouter la variable dans le fichier .profile ou .bashrc
+
+    export KUBECONFIG=${HOME}/okd/auth/kubeconfig
 
 ## Déploiement du cluster
 
