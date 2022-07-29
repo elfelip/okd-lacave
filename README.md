@@ -859,7 +859,7 @@ Pour obtenir le mot de passe de l'utilisateur elastic:
 ## Monitoring
 OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
 Lors de l'installation initiale, il n'y a pas de configuration spécifiques pour le Monitoring. 
-Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seraon pris en charge par l'opérateur j'imagine.
+Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seront pris en charge par l'opérateur j'imagine.
 Une des première configuration à apporter est la configuration du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdus a chaque fois que les pods son recréés.
 Pour appliquer le ConfigMap pour le stockage, exécuter le manifest suivant:
 
@@ -872,37 +872,14 @@ Ce manifest configure les paramêtres suivant:
 
 Il n'est pas possible de créer nos propres tableaux de bords avec l'instance par défaut de Grafana.
 Voir article RedHat: https://access.redhat.com/solutions/4543031
-On doit donc installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
 
-Avant d'installer l'opérateur, on doit créer le namespace grafana-operator
+La documentation pour installer Grafana avec l'opérateur et accéder aux données de Prometheus est disponible à l'adresse suivante: https://www.redhat.com/en/blog/custom-grafana-dashboards-red-hat-openshift-container-platform-4
 
-    kubectl create namespace grafana-operator
+Cette méthode ne permet pas d'installer des instances de Grafana dans d'autres namepsace
 
-J'ai installé l'opérateur en utilisant la console web: 
-    Operators -> OperatorHub 
-    rechercher Grafana
-    Sélectionner Grafana Operator
-    Install
-    Update channel: v4
-    Installation Mode: A specific namespace on the cluster
-    Installed namespace: grafana-operator
-    Update approval: Automatic
-    Install
+Sinon, on peut utiliser la charte helm pour déployer Grafana: https://github.com/grafana/helm-charts/blob/main/charts/grafana/README.md
 
-Pour pouvoir accéder à Prometheus, on doit créer un nouvel utilisateur/mot de passe dans le secret prometheus-k8s-htpasswd:
-Voici les étapes:
-    Pour Ubuntu, on doit installer le package apache2-utils:
-        sudo apt install apache2-utils
-    Obtenir le fichier htpasswd du secret:
-        oc get secret prometheus-k8s-htpasswd -n openshift-monitoring -o jsonpath='{.data.auth}' | base64 -d > prometheus.htpasswd
-    Ajouter une ligne vide au fichier
-        echo >> prometheus.htpasswd
-    Ajouter un nouvel utilisateur dans le fichier:
-        htpasswd -s -b prometheus.htpasswd grafana-client LeMotDePasse
-    Mettre à jour le secret:
-        oc patch secret prometheus-k8s-htpasswd -p "{\"data\":{\"auth\":\"$(base64 -w0 prometheus.htpasswd)\"}}" -n openshift-monitoring
-    Redémarrer les pods Grafana
-        oc delete pod -l app=prometheus -n openshift-monitoring
+Cette méthode permet de déployer des instances de Grafana dans n'importe quel namespace
 
 # Gestion des bases de données
 
