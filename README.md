@@ -1074,8 +1074,8 @@ On doit lancer le playbook à partir de la machine qui contient les fichiers de 
 Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les commandes suivantes: (à ajouter au plyabook)
 
     python3 -m pip install certifi
-    cat router-ca.pem >> $(python3 -m certifi)
-    cat root-ca.crt  >> $(python3 -m certifi)
+    cat router-ca.pem | sudo tee -a $(python3 -m certifi)
+    cat root-ca.crt | sudo tee -a $(python3 -m certifi)
 
 En fait le but c'est d'ajouter les ca dans le fichier de certificats de confiance de Python installé par le module certifi.
 
