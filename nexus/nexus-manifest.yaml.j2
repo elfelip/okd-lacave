@@ -127,7 +127,7 @@ spec:
           claimName: nexus3-data-claim
       containers:
       - name: nexus
-        image: sonatype/nexus3:latest
+        image: sonatype/nexus3:{{ nexus_version | default('latest') }}
         ports:
         - containerPort: 8081
         volumeMounts:

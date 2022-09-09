@@ -7,30 +7,30 @@ kube_routes_domain: apps.{{ kube_cluster }}.{{ kube_domain }}
 project_name: lacave
 kube_node_ssh_key_file: /home/felip/okd/auth/kubelacave-key
 kube_nodes:
-  - name: kube01
+  - name: kube01.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube02
+  - name: kube02.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube03
+  - name: kube03.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube05
+  - name: kube05.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube06
+  - name: kube06.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube07
+  - name: kube07.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube08
+  - name: kube08.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube09
+  - name: kube09.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"
-  - name: kube10
+  - name: kube10.lacave.info
     user: core
     key: "{{ kube_node_ssh_key_file }}"

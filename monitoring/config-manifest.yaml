@@ -15,6 +15,7 @@ data:
             requests:
               storage: 100Gi
     alertmanagerMain:
+      enableUserAlertmanagerConfig: true
       volumeClaimTemplate:
         spec:
           storageClassName: openebs-lvm-localpv-slow

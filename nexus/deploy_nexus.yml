@@ -33,7 +33,7 @@
     when: nexus_password is defined
   - name: Changer le mot de passe du Nexus
     uri:
-      url: https://nexus.{{ global_domain_name }}/service/rest/v1/security/users/admin/change-password
+      url: https://nexus.{{ kube_routes_domain }}/service/rest/v1/security/users/admin/change-password
       user: admin
       password: "{{ nexus_password }}"
       method: PUT
