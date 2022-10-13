@@ -1174,7 +1174,7 @@ Un fois le traitement fait, on peut vérifier que les nouveaux noeuds ont bien �
 
 ### Remplacer un noeud
 
-Il peut arriver qu'un noeud soit a remplacer, soit parce que le disque OS est défectueux ou parce que lq configuration n'est plus à jour et que l'opérateur de configuraiton de machine est incapable de la mettre à jour.
+Il peut arriver qu'un noeud soit a remplacer, soit parce que le disque OS est défectueux ou parce que la configuration n'est plus à jour et que l'opérateur de configuration de machine est incapable de la mettre à jour.
 
 On peut commencer par obtenir la liste des noeuds:
 
