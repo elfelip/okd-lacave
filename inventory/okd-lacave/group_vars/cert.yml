@@ -1,16 +1,16 @@
 self_signed_pki_path: /home/felip/pki
 self_signed_pki_key_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
-          34373939393864666661386531613631363632636235393838623061373164333836316262323830
-          6663663164663137333332306433303833323562656565660a643533323062356536386463623138
-          64376261343032366462623831396362303264643563616333663737353635646163643332363262
-          6362313362333330310a333764383937343630353465306565326432303465626634666136616636
-          6535
-self_signed_pki_ca_key_path: ca/root-ca/private
-self_signed_pki_ca_key_file: root-ca.key
-self_signed_pki_ca_cert_path: ca
-self_signed_pki_ca_cert_file: root-ca.crt
-self_signed_pki_ca_intermediate_file: signing-ca.crt
+          64363961393736653863386132306165316662323565363161353661643835393666623663333733
+          6337333039323464636636646437653833633465633037620a356361636132396434313836316432
+          32323039303063306239313031323931633863313562343966643861356262366436633264303265
+          3537333130666665370a363665376537663066316233643866303634386632613533656361396166
+          3738
+self_signed_pki_ca_key_path: kubelacave/keys
+self_signed_pki_ca_key_file: ca-key
+self_signed_pki_ca_cert_path: kubelacave/keys
+self_signed_pki_ca_cert_file: ca-cert
+#self_signed_pki_ca_intermediate_file: signing-ca.crt
 trusted_registry_configmap: trustedregistrycas
 nexus_registry_ca_cert: "{{ self_signed_pki_path }}/{{ self_signed_pki_ca_cert_path }}/{{ self_signed_pki_ca_cert_file }}"
 cert_manager_namespace: openshift-operators
