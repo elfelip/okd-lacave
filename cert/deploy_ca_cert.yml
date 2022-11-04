@@ -34,7 +34,7 @@
       - manifest_dir is defined 
       - self_signed_root_ca_key is defined
       - self_signed_root_ca_cert is defined
-      - self_signed_intemediate_ca_cert is defined
+
   - name: Installer ClusterIssuer avec le certificat root self-signed
     k8s:
       definition: '{{ lookup("template", "root-ca-cert-manager.yaml.j2") }}'
