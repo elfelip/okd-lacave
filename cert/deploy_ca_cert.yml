@@ -40,7 +40,10 @@
       definition: '{{ lookup("template", "root-ca-cert-manager.yaml.j2") }}'
       namespace: "{{ cert_manager_namespace }}"
       state: present
-    when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
+    when: 
+      - self_signed_root_ca_key is defined
+      - self_signed_root_ca_cert is defined
+      
   - name: Copier le root ca sur les noeuds du Cluster
     command: scp -i {{ node.key }} {{ self_signed_pki_path }}/{{ self_signed_pki_ca_cert_path }}/{{ self_signed_pki_ca_cert_file }} {{ node.user }}@{{ node.name }}:/tmp
     loop: "{{ kube_nodes }}"
