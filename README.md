@@ -1288,7 +1288,6 @@ Juste après la mise à jour du cluster à la version 4.9.0, un des membre du cl
 J'ai suivi les étapes suivantes pour le remplacer:
 https://docs.openshift.com/container-platform/4.9/backup_and_restore/control_plane_backup_and_restore/replacing-unhealthy-etcd-member.html#restore-replace-crashlooping-etcd-member_replacing-unhealthy-etcd-member
 
-<<<<<<< HEAD
 ## Authentification au registres d'images
 
 On utilise les crédentiels qu'on a dans notre fichier .docker/config.json
@@ -1750,8 +1749,6 @@ Cliquer sur le bouton Install
 
 
 
-=======
->>>>>>> 95413f74267f147d37b2b198e51d04f68991e621
 ### Problème avec machine-config-operator
 
 Pour forcer l'utilisation d'une configuraiton quand le Machine Config Pool est à degraded avec le message d'erreur des noeud qui essais de charger une configuration qui n'existe plus.
