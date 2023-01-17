@@ -19,6 +19,9 @@ case "$1" in
 	11)
 		dnf install -y java-11-openjdk java-11-openjdk-devel
 		;;
+	17)
+		dnf install -y java-17-openjdk java-17-openjdk-devel
+		;;
 	12)
 		curl -k ${NEXUS_URL}/openjdk-${JDK_VERSION}_linux-x64_bin.tar.gz -o /tmp/openjdk.tar.gz
 		tar -xzvf /tmp/openjdk.tar.gz -C /opt 

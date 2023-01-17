@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi
+FROM registry.access.redhat.com/ubi9/ubi:latest
 
 RUN dnf install -y wget hostname
 # Install language pack
@@ -12,7 +12,7 @@ RUN export GLIBC_VERSION=$(curl ${LANGPACK_DOWNLOAD_URL}/ | grep glibc-langpack-
 	${LANGPACK_DOWNLOAD_URL}/glibc-minimal-langpack-${GLIBC_VERSION}.el9.x86_64.rpm 
 ENV TZ=America/Toronto
 
-ARG JDK_VERSION=11
+ARG JDK_VERSION=17
 ENV CACERTS="-cacerts"
 
 ARG NEXUS_URL=https://nexus3.inspq.qc.ca:8443/repository/utilitaires-infrastructure
