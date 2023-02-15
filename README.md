@@ -1556,7 +1556,7 @@ Pour obtenir le mot de passe de l'utilisateur elastic:
 ## Monitoring
 OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
 Lors de l'installation initiale, il n'y a pas de configuration spécifiques pour le Monitoring. 
-Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seraon pris en charge par l'opérateur j'imagine.
+Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seront pris en charge par l'opérateur j'imagine.
 Une des première configuration à apporter est la configuration du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdus a chaque fois que les pods son recréés.
 Pour appliquer le ConfigMap pour le stockage, exécuter le manifest suivant:
 
