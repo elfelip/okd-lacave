@@ -1765,7 +1765,7 @@ Référence: https://github.com/tektoncd/website/pull/511
 
 Installation des triggers:
 
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+    curl -s https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml|sed '/runAs/d'|kubectl apply -f-
 
 Installation du Dashboard
 
@@ -1785,6 +1785,18 @@ Pour installer les composants, lancer la commande suivante:
 Pour le moment, les composants ne démarrent pas:
 
     pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
+
+### Imnstallation des tâches Tekton
+On peut déployer des tâches qui peuvent être incluses dans les pipelines Tekton
+
+Tâche pour la commande git: https://hub.tekton.dev/tekton/task/git-cli
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-cli/0.4/git-cli.yaml
+
+Tâche pour Maven: https://hub.tekton.dev/tekton/task/maven
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/maven/0.2/maven.yaml
+
 # Problèmes et solutions
 
 ### Replacement d'un membre du cluster etcd
