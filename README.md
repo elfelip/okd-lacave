@@ -1763,6 +1763,10 @@ Voici la recette pour déployer les pipelines tekton sans opérateur avec le cor
 
 Référence: https://github.com/tektoncd/website/pull/511
 
+Installation des triggers:
+
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+
 Installation du Dashboard
 
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
