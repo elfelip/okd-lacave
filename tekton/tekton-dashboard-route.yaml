@@ -1,0 +1,19 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: tekton-dashboard
+  name: tekton-dashboard
+  namespace: tekton-pipelines
+spec:
+  host: tekton-dashboard.apps.kubelacave.kube.lacave.info
+  port:
+    targetPort: http
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: tekton-dashboard
+    weight: 100
+  wildcardPolicy: None

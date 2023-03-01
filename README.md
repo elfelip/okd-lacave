@@ -1279,14 +1279,6 @@ Après quelques minutes, le noeud devrait être de nouveau Ready:
     kube07   Ready    worker   12d    v1.22.3+4dd1b5a
     kube08   Ready    worker   58m    v1.22.3+4dd1b5a
 
-# Problèmes et solutions
-
-### Replacement d'un membre du cluster etcd
-
-Juste après la mise à jour du cluster à la version 4.9.0, un des membre du cluster etcd s'est mis en mode CrashLoop.
-
-J'ai suivi les étapes suivantes pour le remplacer:
-https://docs.openshift.com/container-platform/4.9/backup_and_restore/control_plane_backup_and_restore/replacing-unhealthy-etcd-member.html#restore-replace-crashlooping-etcd-member_replacing-unhealthy-etcd-member
 
 ## Authentification au registres d'images
 
@@ -1608,8 +1600,16 @@ Voici les étapes:
 
 On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
 
+## Oprateur Postgresql Crunchy Data
+
+Utiliser cet opérateur pour la création de cluster PostgreSQL. Fonctionne très bien avec Openshift et OKD. Les nouvelles versions utilisent des CRD pour la gestion des clusters.
+
+L'opérateur s'installe à partir du OperatorHub de OKD et Openshift.
+
+
 ## Zalando
 
+Ne pas utiliser. Problème de stabilité avec les nouvelles version de OKD
 Un autre opérateur Postgres:
 
 https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
@@ -1674,6 +1674,11 @@ Dans l'onglet HyperConverged Cluster Operator Deployment, cliquer sur le bouton 
 Entrer les paramètres suivants:
     Name: kubevirt-hyperconverged
     Local Storage Class Name: openebs-lvm-localpv-fast
+
+Ajouter les paramètres accessMode et volumeMode pour les profils des classe de stockage utilisés par Kubevirt:
+
+	oc patch storageprofile openebs-lvm-localpv-slow --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
+	oc patch storageprofile openebs-lvm-localpv-fast --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
 
 On peut suivre le déploiement des pods dans le namespace kubervirt-hyperconverged:
 
@@ -1747,6 +1752,43 @@ Utiliser les paramètres suivants:
     Update approval: Automatic
 Cliquer sur le bouton Install
 
+## Tekton
+Pipelines GitOps pour Kubernetes.
+
+### Tekton sans opérateur
+
+Voici la recette pour déployer les pipelines tekton sans opérateur avec le correctif qui enlève les runAsUser pour Openshift:
+
+    curl -s https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml|sed '/runAs/d'|kubectl apply -f-
+
+Référence: https://github.com/tektoncd/website/pull/511
+
+Installation du Dashboard
+
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+
+### Opérateur Tekton
+
+Source: https://github.com/tektoncd/operator/blob/main/docs/install.md
+Cet opérateur permet la gestion des pipelines Tekton. On peut l'installer avec la commande suivante:
+
+    kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
+
+Pour installer les composants, lancer la commande suivante:
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
+
+Pour le moment, les composants ne démarrent pas:
+
+    pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
+# Problèmes et solutions
+
+### Replacement d'un membre du cluster etcd
+
+Juste après la mise à jour du cluster à la version 4.9.0, un des membre du cluster etcd s'est mis en mode CrashLoop.
+
+J'ai suivi les étapes suivantes pour le remplacer:
+https://docs.openshift.com/container-platform/4.9/backup_and_restore/control_plane_backup_and_restore/replacing-unhealthy-etcd-member.html#restore-replace-crashlooping-etcd-member_replacing-unhealthy-etcd-member
 
 
 ### Problème avec machine-config-operator
