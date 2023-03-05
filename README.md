@@ -820,6 +820,10 @@ On doit lancer le playbook à partir de la machine qui contient les fichiers de 
     Créer le culter issuer
         ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_ca_cert.yml
 
+On peut récupérer la clé publique du certificat avec la commande suivante pour pouvoir l'importer dans les trusts stores:
+
+    oc get secret ca-lacave-tls -n openshift-operators -o jsonpath='{.data.tls\.crt}' | base64 -d > lacave-root.pem
+
 ### Ajouter le ca dans python
 
 Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les commandes suivantes: (à ajouter au plyabook)
