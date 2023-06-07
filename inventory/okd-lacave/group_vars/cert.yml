@@ -1,4 +1,5 @@
-self_signed_pki_path: /home/felip/pki
+#self_signed_pki_path: /home/felip/pki
+self_signed_pki_path: /home/felip/git/forge/infra_cle_prive_inspq/pki/pki
 self_signed_pki_key_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
           64363961393736653863386132306165316662323565363161353661643835393666623663333733
@@ -6,9 +7,11 @@ self_signed_pki_key_password: !vault |
           32323039303063306239313031323931633863313562343966643861356262366436633264303265
           3537333130666665370a363665376537663066316233643866303634386632613533656361396166
           3738
-self_signed_pki_ca_key_path: kubelacave/keys
+#self_signed_pki_ca_key_path: kubelacave/keys
+self_signed_pki_ca_key_path: kubelacave/ca/kubelacave/keys
 self_signed_pki_ca_key_file: ca-key
-self_signed_pki_ca_cert_path: kubelacave/keys
+#self_signed_pki_ca_cert_path: kubelacave/keys
+self_signed_pki_ca_cert_path: kubelacave/ca/kubelacave/keys
 self_signed_pki_ca_cert_file: ca-cert
 #self_signed_pki_ca_intermediate_file: signing-ca.crt
 trusted_registry_configmap: trustedregistrycas
