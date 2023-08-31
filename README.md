@@ -1386,6 +1386,27 @@ Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire le
 
 Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
 
+### NFS
+On peut utiliser un stockage NFS externe pour provisionner des volumes.
+Voici une recette pour configurer une classe de stockage et provisionneur NFS.
+
+    https://dzone.com/articles/dynamic-nfs-provisioning-in-red-hat-openshift
+
+Ayant déjà un serveur NFS sur le réseau de lacave, on a alors a créer un nouveau partage pour qu'il soit utilisé par le cluster.
+Voici les étapes:
+
+    Créer le volume lvkubernetes et lui assigner de l'espace suffisiant pour tout les volumes du cluster qui utiliseront la classe NFS.
+    Monter le volume dans /kubernetes/volumes
+    L'ajouter dans /etc/exports
+    Redémarrer le service nfs-server
+    Tester si le partage est accessible
+    Créer les rôles et le compte de service sur le cluster
+    Créer la classe de stockage
+    Créer le provisionneur
+    Tester en créant un pvc et pod qui utilise ce volume
+
+Les volumes provisionnées se retrouvent dans un sous-répertoire de /kubernetes/volumes sur le serveur NFS.
+
 ### Minio
 On a pas utilisé minio dans la POC
 
@@ -1610,52 +1631,6 @@ Utiliser cet opérateur pour la création de cluster PostgreSQL. Fonctionne trè
 
 L'opérateur s'installe à partir du OperatorHub de OKD et Openshift.
 
-
-## Zalando
-
-Ne pas utiliser. Problème de stabilité avec les nouvelles version de OKD
-Un autre opérateur Postgres:
-
-https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
-
-Installation:
-
-    Faire un clone du repository
-        git clone https://github.com/zalando/postgres-operator.git
-    L'idéal est d'untiliser un tag pour le déploiement. Lancer la commande suivante pour avoir la liste des versions disponibles:
-        cd postgres-operator
-        git tag --list
-    Pour choisir une version spécifique (ex. v1.8.0), lancer la commande suivante:
-        git checkout v1.8.0
-    Créer le namespace
-        kubectl create namespace postgres-operator
-    Installer l'opérateur
-        helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        # oc adm policy add-scc-to-group anyuid system:authenticated
-        oc adm policy add-scc-to-user nonroot -z builder -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
-    Ajouter les droits cluster admin au compte de service postgres-pod. Revenir dans le répertoire du projet okd-lacave et lancer la commande suivante:
-        kubectl create -f zalando/postgres-pod-cluster-admin.yaml
-
-On peut installer le UI. Optionnel et pas très utile.
-
-    Installer le UI
-        cd postgres-operator
-        helm install postgres-operator-ui ./charts/postgres-operator-ui -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        oc adm policy add-scc-to-user nonroot -z postgres-operator-ui -n postgres-operator
-
-
-On peut créer un cluster de test avec le manifest suivant:
-    
-    kubectl create -f zalando/minimal-postgres-manifest.yaml
-
-Patcher le service pour lui ajouter un pod selector:
-
-    kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
 
 ## Virtualisation
 Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KVM avec Kubernetes en utilisant Kubevirt.
