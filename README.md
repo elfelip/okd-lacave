@@ -37,7 +37,7 @@ flowchart TD
     LB[Balanceur de charge, serveur web, DHCP et PXE] -->|https api 6443 et machineconfig 22623| KB1[kube01 master]
     LB -->|https api 6443 et machineconfig 22623| KB2[kube02 master]
     LB -->|https api 6443 et machineconfig 22623| KB3[kube03 master]
-    LB -->|https api 6443 et machineconfig 22623| KB3[kube04 bootstrap]
+    LB -->|https api 6443 et machineconfig 22623| KB4[kube04 bootstrap]
     LB -->|https router 443| KB5[kube05 worker]
     LB -->|https router 443| KB6[kube06 worker]
     LB -->|https router 443| KB7[kube07 worker]
