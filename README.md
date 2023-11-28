@@ -2,7 +2,7 @@
 
 On utilise Fedora CoreOS comme système d'exploitation pour installer OKD sur des machines physiques.
 
-Pour déployer un cluster a trois noeuds on a besoin de 4 machines:
+Pour déployer un cluster a trois noeuds master on a besoin de 4 machines. On peut ajouter le nombre de worker qu'on veut par la suite. Le cluster KUBELACAVE en contient 6.
 
     kube01: master0
     kube02: master1
@@ -12,6 +12,8 @@ Pour déployer un cluster a trois noeuds on a besoin de 4 machines:
     kube06: worker1
     kube07: worker2
     kube08: worker3
+    kube09: worker4
+    kube10: worker5
 
 La machine bootstrap est temporaire, c'est celle qui va déployer le cluster sur les autres noeuds.
 
@@ -19,6 +21,40 @@ Voici les infpormations pour ce cluster:
 
     Zone DNS pour le cluster: kube.lacave.info
     Nom du cluster: kubelacave
+
+## Infrastructure
+
+Pour accueillir le cluster on a besoin des élments suivants:
+
+    Un réseau local qui relie les machines du clister dans le même sous-réseau.
+    Un serveur PXE qui servira a démarrer les noeuds
+    Un load balancer HTTP qui permet de distribuer la charge dans les différents noeuds. Que ce soit pour l'accès à l'API ou pour l'accès aux applicaitons dans le cluster par les ingress.
+
+Voici un schéma de l'infrastructure LACAVE.
+
+```mermaid
+flowchart TD
+    LB[Balanceur de charge, serveur web, DHCP et PXE] -->|https api 6443| KB1[kube01 master]
+    LB -->|https api 6443| KB2[kube02 master]
+    LB -->|https api 6443| KB3[kube03 master]
+    LB -->|https router 443| KB5[kube05 worker]
+    LB -->|https router 443| KB6[kube06 worker]
+    LB -->|https router 443| KB7[kube07 worker]
+    LB -->|https router 443| KB8[kube08 worker]
+    LB -->|https router 443| KB9[kube09 worker]
+    LB -->|https router 443| KB10[kube10 worker]
+    KB5 --> |fast| fvg5[fastvg]
+    KB5 --> |slow| svg5[slowvg]
+    KB6 --> |fast| fvg6[fastvg]
+    KB6 --> |slow| svg6[slowvg]
+    KB7 --> |fast| fvg7[fastvg]
+    KB7 --> |slow| svg7[slowvg]
+    KB8 --> |fast| fvg8[fastvg]
+    KB9 --> |fast| fvg9[fastvg]
+    KB9 --> |slow| svg9[slowvg]
+    KB10 --> |fast| fvg10[fastvg]
+    KB10 --> |slow| svg10[slowvg]
+```
 
 ## PXE Boot
 Avec OKD, il est suggéré de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pxelinux sous Ubuntu 20.04.
@@ -1386,6 +1422,11 @@ Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire le
 
 Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
 
+#### Mettre à jour lvm-operator
+
+La documentation pour la mise à jour est disponible à l'adresse suivante: https://github.com/openebs/lvm-localpv/tree/develop/upgrade
+
+
 ### NFS
 On peut utiliser un stockage NFS externe pour provisionner des volumes.
 Voici une recette pour configurer une classe de stockage et provisionneur NFS.
@@ -1765,7 +1806,24 @@ Pour le moment, les composants ne démarrent pas:
 
     pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
 
-### Imnstallation des tâches Tekton
+### Open Data Hub (ODH)
+
+Opérateur pour ML
+Utiliser la console pour déployer l'opérateur Open Data Hub. J'ai utilisé le canal stable.
+
+Une fois l'opérateur installé, créer un namespace pour déployer l'instance ODH:
+
+    oc create namespace odh-test
+
+ Dans la console OKD, sélectionner le projet odh-test, aller dans le menu Installed Operator -> Open Data Hub Operator -> KfDef et cliquer create instance. On peut utiliser les valeurs par défaut.
+
+#### Droits admin pour l'utilisateur kubeadmin
+
+Pour que l'utilisateur Kubeadmin puisse accéder aux interfaces d'administration de ODH, on doit créer le groupe odh-admins
+
+    od appy -f odh/odh-admins-manifest-yaml
+
+### Installation des tâches Tekton
 On peut déployer des tâches qui peuvent être incluses dans les pipelines Tekton
 
 Tâche pour la commande git: https://hub.tekton.dev/tekton/task/git-cli

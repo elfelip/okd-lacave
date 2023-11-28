@@ -1,0 +1,5 @@
+kind: Group
+metadata:
+  name: odh-admins
+users:
+- b64:kube:admin
