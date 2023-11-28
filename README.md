@@ -34,9 +34,10 @@ Voici un schéma de l'infrastructure LACAVE.
 
 ```mermaid
 flowchart TD
-    LB[Balanceur de charge, serveur web, DHCP et PXE] -->|https api 6443| KB1[kube01 master]
-    LB -->|https api 6443| KB2[kube02 master]
-    LB -->|https api 6443| KB3[kube03 master]
+    LB[Balanceur de charge, serveur web, DHCP et PXE] -->|https api 6443 et machineconfig 22623| KB1[kube01 master]
+    LB -->|https api 6443 et machineconfig 22623| KB2[kube02 master]
+    LB -->|https api 6443 et machineconfig 22623| KB3[kube03 master]
+    LB -->|https api 6443 et machineconfig 22623| KB3[kube04 bootstrap]
     LB -->|https router 443| KB5[kube05 worker]
     LB -->|https router 443| KB6[kube06 worker]
     LB -->|https router 443| KB7[kube07 worker]
@@ -57,7 +58,7 @@ flowchart TD
 ```
 
 ## PXE Boot
-Avec OKD, il est suggéré de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pxelinux sous Ubuntu 20.04.
+Avec OKD, il est suggéré de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pxelinux sous Ubuntu 22.04.
 
 Pour ce document, on utilise les adresses MAC suivant. Les ajuster en fonction des adresses MAC de vos machines:
 
@@ -185,32 +186,15 @@ Dans notre installation, Un serveur DNS bind est installé sur le serveur de pro
 Le fichier de zone pour lacave.info est /etc/bind/lacave.info.db
 
 ## Load Balancer
-Pour le moment, il n'y a pas de load balancer mais il est nécessaire d'en avoir un pour le bon fonctionnement du cluster.
-Le Load balancer devrait balancer la charge pour les ports suivants:
-    6443 vers kube01, kube02, kube03 et kube04. kube04 sera retiré à la fin de l'installation du cluster
-    22623 vers kube01, kube02, kube03 et kube04. kube04 sera retiré à la fin de l'installation du cluster
+Il est essentiel d'installer un load balancer web pour permettre les communication avec l'API de Kubernetes et avec les Ingress.
 
 ### Load Balancer NGINX
 
-J'ai installé NGINX sur l'hôte Centos qui héberge les VM des noeuds kube04, kube05, kube06 et kube07.
+Pour cet inforastruture NGINX est utilisé comme load balancer http. Il a été installé sur le même serveur Ubuntu que le PXE, le DHCP et le TFTP
 Source : https://www.cyberciti.biz/faq/configure-nginx-ssltls-passthru-with-tcp-load-balancing/
 Pour installer nginx:
 
-    sudo dnf install -y nginx
-
-Modifier la section suivante du fichier /etc/nginx/nginx.conf pour libérer le port 80:
-
-    server {
-        listen       8080 default_server;
-        listen       [::]:8080 default_server;
-        server_name  _;
-        root         /usr/share/nginx/html;
-
-        # Load configuration files for the default server block.
-        include /etc/nginx/default.d/*.conf;
-
-        location / {
-        }
+    sudo apt install -y nginx
 
 Ajouter les lignes suivantes au fichier /etc/nginx/nginx.conf
 
@@ -234,7 +218,7 @@ On a besoin des entrés suivantes:
 $ORIGIN lacave.info.
 $TTL 3600       ; 1 hour
 dns1                    A       192.168.1.10
-lb                      A       192.168.1.20
+lb                      A       192.168.1.10
 kube01                  A       192.168.1.21
 master0.kubelacave.kube CNAME   kube01.lacave.info.
 kube02                  A       192.168.1.22
@@ -243,6 +227,18 @@ kube03                  A       192.168.1.23
 master2.kubelacave.kube CNAME   kube03.lacave.info.
 kube04                  A       192.168.1.24
 bootstrap.kubelacave.kube       CNAME   kube04.lacave.info.
+kube05                  A       192.168.1.25
+worker0.kubelacave.kube CNAME   kube05.lacave.info.
+kube06                  A       192.168.1.26
+worker1.kubelacave.kube CNAME   kube06.lacave.info.
+kube07                  A       192.168.1.27
+worker2.kubelacave.kube CNAME   kube07.lacave.info.
+kube08                  A       192.168.1.28
+worker3.kubelacave.kube CNAME   kube08.lacave.info.
+kube09                  A       192.168.1.29
+worker4.kubelacave.kube CNAME   kube09.lacave.info.
+kube10                  A       192.168.1.30
+worker5.kubelacave.kube CNAME   kube10.lacave.info.
 lb.kubelacave.kube      CNAME   lb.lacave.info.
 
 kube                    CNAME   lb.kubelacave.kube.lacave.info.
@@ -252,7 +248,7 @@ helper.kubelacave.kube  CNAME   lb.kubelacave.kube.lacave.info.
 *.kube                  CNAME   kube.lacave.info.
 *.kubelacave.kube       CNAME   kube.lacave.info.
 
-Les entrés helper.kubelacave.kube, api.kubelacave.kube et api.kubelacave.kube doivent résoudre vers l'adresse du bootstrap lors de l'installation initiale.
+Les entrés helper.kubelacave.kube, api.kubelacave.kube et api.kubelacave.kube doivent résoudre vers l'adresse du bootstrap lors de l'installation initiale dans la cas ou il n'y a pas de load balancer.
 Un fois le cluster démarré, on doit changer la destination pour master0.kubelacave.kube.lacave.info.
 Les entrés devront alors être modifiées pour:
 
