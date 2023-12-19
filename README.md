@@ -26,9 +26,9 @@ Voici les infpormations pour ce cluster:
 
 Pour accueillir le cluster on a besoin des élments suivants:
 
-    Un réseau local qui relie les machines du clister dans le même sous-réseau.
+    Un réseau local qui relie les machines du cluster dans le même sous-réseau.
     Un serveur PXE qui servira a démarrer les noeuds
-    Un load balancer HTTP qui permet de distribuer la charge dans les différents noeuds. Que ce soit pour l'accès à l'API ou pour l'accès aux applicaitons dans le cluster par les ingress.
+    Un load balancer HTTP qui permet de distribuer la charge dans les différents noeuds. Que ce soit pour l'accès à l'API ou pour l'accès aux applications dans le cluster par les ingress.
 
 Voici un schéma de l'infrastructure LACAVE.
 
@@ -136,7 +136,7 @@ Fichiers pxelinux
     sudo cp /boot/pxelinux.0 /srv/tftp
     sudo cp /boot/ldlinux.c32 /srv/tftp
 
-Créer les fichiers de configutations pxeboot pour les noeuds du cluster. Le nom du fichier de configuration pour chacun des noeud doit correspondre à son adresse MAC préfixé de 1 (je ne sais pas pourquoi le 1)
+Créer les fichiers de configutations pxeboot pour les noeuds du cluster. Le nom du fichier de configuration pour chacun des noeuds doit correspondre à son adresse MAC préfixée de 1 (je ne sais pas pourquoi le 1)
 
 Voici les fichiers à créer:
 
