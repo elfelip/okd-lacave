@@ -76,7 +76,7 @@ spec:
     - ReadWriteOnce
     resources:
         requests:
-            storage: 2Ti
+            storage: {{ nexus_storage_size | default('100Gi') }}
     storageClassName: {{ nexus_storage_class | default('openebs-lvm-localpv-slow') }}
 ---
 apiVersion: apps/v1
