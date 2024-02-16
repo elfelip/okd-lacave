@@ -87,6 +87,8 @@ metadata:
   labels:
     app: nexus
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
@@ -122,17 +124,18 @@ spec:
             runAsGroup: 0
             fsGroup: 0
       volumes:
-      - name: nexus-data
-        persistentVolumeClaim:
-          claimName: nexus3-data-claim
-      containers:
-      - name: nexus
-        image: sonatype/nexus3:{{ nexus_version | default('latest') }}
-        ports:
-        - containerPort: 8081
-        volumeMounts:
         - name: nexus-data
-          mountPath: /nexus-data
+          persistentVolumeClaim:
+            claimName: nexus3-data-claim
+      containers:
+        - name: nexus
+          image: sonatype/nexus3:{{ nexus_version | default('latest') }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          volumeMounts:
+            - name: nexus-data
+              mountPath: /nexus-data
 ---
     apiVersion: v1
     kind: Service
