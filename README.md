@@ -699,21 +699,18 @@ Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hé
 
 La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires. Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg.
 
-    ssh -i ~/okd/auth/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i ~/okd/auth/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i ~/okd/auth/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i ~/okd/auth/kubelacave-key core@kube08.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i ~/okd/auth/kubelacave-key core@kube09.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i ~/okd/auth/kubelacave-key core@kube10.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube01.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube02.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube03.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
+    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
 
 Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les disques SSD:
 
-    ssh -i ~/okd/auth/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i ~/okd/auth/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i ~/okd/auth/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i ~/okd/auth/kubelacave-key core@kube08.lacave.info "sudo vgcreate slowvg /dev/sda5"
-    ssh -i ~/okd/auth/kubelacave-key core@kube09.lacave.info "sudo vgcreate slowvg /dev/sda5"
-    ssh -i ~/okd/auth/kubelacave-key core@kube10.lacave.info "sudo vgcreate slowvg /dev/sda5"
+    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
+    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
 
 #### Instasllation avec OperatorHub
 Installation par OperatorHub
@@ -754,8 +751,8 @@ Voici les classes à créer
 
 Pour les appliquer:
 
-    kubectl apply -f openebs/storage-class-fast.yaml
-    kubectl apply -f openebs/storage-class-slow.yaml
+    kubectl create -f openebs/storage-class-fast.yaml
+    kubectl create -f openebs/storage-class-slow.yaml
 
 Pour tester, on peut déployer les pods exemples inclus dans le projet.
 
@@ -766,6 +763,34 @@ On peut les supprimer avec la commande suivante:
     kubectl delete -f openebs/exemple-stockage.yaml
 
 Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire les volumes logiques de sur les hôtes.
+
+Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
+
+#### Mettre à jour lvm-operator
+
+La documentation pour la mise à jour est disponible à l'adresse suivante: https://github.com/openebs/lvm-localpv/tree/develop/upgrade
+
+
+### NFS
+On peut utiliser un stockage NFS externe pour provisionner des volumes.
+Voici une recette pour configurer une classe de stockage et provisionneur NFS.
+
+    https://dzone.com/articles/dynamic-nfs-provisioning-in-red-hat-openshift
+
+Ayant déjà un serveur NFS sur le réseau de lacave, on a alors a créer un nouveau partage pour qu'il soit utilisé par le cluster.
+Voici les étapes:
+
+    Créer le volume lvkubernetes et lui assigner de l'espace suffisiant pour tout les volumes du cluster qui utiliseront la classe NFS.
+    Monter le volume dans /kubernetes/volumes
+    L'ajouter dans /etc/exports
+    Redémarrer le service nfs-server
+    Tester si le partage est accessible
+    Créer les rôles et le compte de service sur le cluster
+    Créer la classe de stockage
+    Créer le provisionneur
+    Tester en créant un pvc et pod qui utilise ce volume
+
+Les volumes provisionnées se retrouvent dans un sous-répertoire de /kubernetes/volumes sur le serveur NFS.
 
 ### Minio
 On a pas utilisé minio dans la POC
@@ -866,7 +891,7 @@ Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les 
 
 En fait le but c'est d'ajouter les ca dans le fichier de certificats de confiance de Python installé par le module certifi.
 
-### Configuration des registres d'images
+# Configuration des registres d'images
 
 Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contient le ca de chacun des registres de confiance et l'ajouter à la configuraiton du cluster.
 Ces étapes ont été automatisé dans le playbook registry/config_registries.yml
@@ -908,67 +933,48 @@ Ce manifest configure les paramêtres suivant:
 
 Il n'est pas possible de créer nos propres tableaux de bords avec l'instance par défaut de Grafana.
 Voir article RedHat: https://access.redhat.com/solutions/4543031
+On doit donc installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
 
-La documentation pour installer Grafana avec l'opérateur et accéder aux données de Prometheus est disponible à l'adresse suivante: https://www.redhat.com/en/blog/custom-grafana-dashboards-red-hat-openshift-container-platform-4
+Avant d'installer l'opérateur, on doit créer le namespace grafana-operator
 
-Cette méthode ne permet pas d'installer des instances de Grafana dans d'autres namepsace
+    kubectl create namespace grafana-operator
 
-Sinon, on peut utiliser la charte helm pour déployer Grafana: https://github.com/grafana/helm-charts/blob/main/charts/grafana/README.md
+J'ai installé l'opérateur en utilisant la console web: 
+    Operators -> OperatorHub 
+    rechercher Grafana
+    Sélectionner Grafana Operator
+    Install
+    Update channel: v4
+    Installation Mode: A specific namespace on the cluster
+    Installed namespace: grafana-operator
+    Update approval: Automatic
+    Install
 
-Cette méthode permet de déployer des instances de Grafana dans n'importe quel namespace
+Pour pouvoir accéder à Prometheus, on doit créer un nouvel utilisateur/mot de passe dans le secret prometheus-k8s-htpasswd:
+Voici les étapes:
+    Pour Ubuntu, on doit installer le package apache2-utils:
+        sudo apt install apache2-utils
+    Obtenir le fichier htpasswd du secret:
+        oc get secret prometheus-k8s-htpasswd -n openshift-monitoring -o jsonpath='{.data.auth}' | base64 -d > prometheus.htpasswd
+    Ajouter une ligne vide au fichier
+        echo >> prometheus.htpasswd
+    Ajouter un nouvel utilisateur dans le fichier:
+        htpasswd -s -b prometheus.htpasswd grafana-client LeMotDePasse
+    Mettre à jour le secret:
+        oc patch secret prometheus-k8s-htpasswd -p "{\"data\":{\"auth\":\"$(base64 -w0 prometheus.htpasswd)\"}}" -n openshift-monitoring
+    Redémarrer les pods Grafana
+        oc delete pod -l app=prometheus -n openshift-monitoring
+
 
 # Gestion des bases de données
 
 On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
 
-## Zalando
+## Oprateur Postgresql Crunchy Data
 
-Un autre opérateur Postgres:
+Utiliser cet opérateur pour la création de cluster PostgreSQL. Fonctionne très bien avec Openshift et OKD. Les nouvelles versions utilisent des CRD pour la gestion des clusters.
 
-https://github.com/zalando/postgres-operator/blob/master/docs/quickstart.md
-
-Installation:
-
-    Faire un clone du repository
-        git clone https://github.com/zalando/postgres-operator.git
-    L'idéal est d'untiliser un tag pour le déploiement. Lancer la commande suivante pour avoir la liste des versions disponibles:
-        cd postgres-operator
-        git tag --list
-    Pour choisir une version spécifique (ex. v1.8.2), lancer la commande suivante:
-        git checkout v1.8.2
-    Créer le namespace
-        kubectl create namespace postgres-operator
-    Installer l'opérateur
-        helm install postgres-operator ./charts/postgres-operator --set configKubernetes.enable_pod_antiaffinity=true -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        # oc adm policy add-scc-to-group anyuid system:authenticated
-        oc adm policy add-scc-to-user nonroot -z builder -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z default -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z deployer -n postgres-operator
-        oc adm policy add-scc-to-user nonroot -z postgres-operator -n postgres-operator
-    Ajouter les droits cluster admin au compte de service postgres-pod. Revenir dans le répertoire du projet okd-lacave et lancer la commande suivante:
-        kubectl create -f zalando/postgres-pod-cluster-admin.yaml
-
-On peut installer le UI. Optionnel et pas très utile.
-
-    Installer le UI
-        cd postgres-operator
-        helm install postgres-operator-ui ./charts/postgres-operator-ui -n postgres-operator
-    Ajuster les policy pour les UID des utilisateurs et GID des groupes pour les pods privilégiés
-        oc adm policy add-scc-to-user nonroot -z postgres-operator-ui -n postgres-operator
-
-
-On peut créer un cluster de test avec le manifest suivant:
-    
-    kubectl create -f zalando/minimal-postgres-manifest.yaml
-
-Patcher le service pour lui ajouter un pod selector:
-
-    kubectl patch service acid-minimal-cluster -n default -p '{"spec":{"selector":{"application":"spilo","cluster-name":"acid-minimal-cluster","spilo-role":"master"}}}'
-
-On peut supprimer le cluster Postgres avec la commande suivante:
-
-    kubectl delete -f zalando/minimal-postgres-manifest.yaml
+L'opérateur s'installe à partir du OperatorHub de OKD et Openshift.
 
 ## Virtualisation
 Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KVM avec Kubernetes en utilisant Kubevirt.
@@ -976,7 +982,7 @@ Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KV
 ### Kubevirt Hyper Converged Cluster Operator
 Cet opérateur permet le de gérer des opérateurs de divers type. On l'utilise pour gérer Kubevirt, Conterized Data Importer (CDI), le Virtual Machine Import operator et le cluster network address (CNA) operator.
 
-Pour intaller cet opérateur, utiliser le menu Operators -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
+Pour intaller cet opérateur, utiliser le menu Opertaorts -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
 Entrer les paramètres suivants et cliquer install pour le déployer:
 
     Update chanenel: stable
@@ -991,6 +997,11 @@ Dans l'onglet HyperConverged Cluster Operator Deployment, cliquer sur le bouton 
 Entrer les paramètres suivants:
     Name: kubevirt-hyperconverged
     Local Storage Class Name: openebs-lvm-localpv-fast
+
+Ajouter les paramètres accessMode et volumeMode pour les profils des classe de stockage utilisés par Kubevirt:
+
+	oc patch storageprofile openebs-lvm-localpv-slow --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
+	oc patch storageprofile openebs-lvm-localpv-fast --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
 
 On peut suivre le déploiement des pods dans le namespace kubervirt-hyperconverged:
 
@@ -1044,7 +1055,6 @@ Pour le supprimer:
 
     oc delete -f strimzi/example-cluster-kafka.yaml
 
-    
 ## Observability
 
 On déploie l'opérateur Jaeger pour recueillir les données d'observabilités des applications. Jaeger permet de recueillir plusieurs métriques permettant d'observer le comportment des applications et aider à identifier des poinds de contentions.
@@ -1064,6 +1074,14 @@ Utiliser les paramètres suivants:
     Update approval: Automatic
 Cliquer sur le bouton Install
 
+### Acces Token pour le compte de service du ui proxy
+
+Après une réinstallation oiu lors d'une nouvelle isntallation de Jaeger, il est possible que le compte de service n'aie pas d'access token. Pour en générer un noubeau, lancer la commande suivante:
+
+    oc serviceaccounts new-token NOM-INSTANCE_JAEGER-ui-proxy -n NAMESPACE_DE_L_INSTANCE
+    ex.
+        oc serviceaccounts new-token sx5-kubelacave-jaeger-ui-proxy -n sx5-kubelacave
+
 ## Nexus
 
 Pour gérer les artefacts on peut déployer un serveur Nexus sur le cluster kubernetes
@@ -1072,6 +1090,68 @@ On peut utiliser le playbook Ansible deploy_nexus.yml pour le faire:
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dir=/tmp nexus/deploy_nexus.yml
 
 Le mot de passe de l'utilisateur admin sera celui mis dans l'inventaire Ansible.
+
+## Tekton
+Pipelines GitOps pour Kubernetes.
+
+### Tekton sans opérateur
+
+Voici la recette pour déployer les pipelines tekton sans opérateur avec le correctif qui enlève les runAsUser pour Openshift:
+
+    curl -s https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml|sed '/runAs/d'|kubectl apply -f-
+
+Référence: https://github.com/tektoncd/website/pull/511
+
+Installation des triggers:
+
+    curl -s https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml|sed '/runAs/d'|kubectl apply -f-
+
+Installation du Dashboard
+
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+
+### Opérateur Tekton
+
+Source: https://github.com/tektoncd/operator/blob/main/docs/install.md
+Cet opérateur permet la gestion des pipelines Tekton. On peut l'installer avec la commande suivante:
+
+    kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
+
+Pour installer les composants, lancer la commande suivante:
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
+
+Pour le moment, les composants ne démarrent pas:
+
+    pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
+
+### Installation des tâches Tekton
+On peut déployer des tâches qui peuvent être incluses dans les pipelines Tekton
+
+Tâche pour la commande git: https://hub.tekton.dev/tekton/task/git-cli
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-cli/0.4/git-cli.yaml
+
+Tâche pour Maven: https://hub.tekton.dev/tekton/task/maven
+
+    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/maven/0.2/maven.yaml
+
+### Open Data Hub (ODH)
+
+Opérateur pour ML
+Utiliser la console pour déployer l'opérateur Open Data Hub. J'ai utilisé le canal stable.
+
+Une fois l'opérateur installé, créer un namespace pour déployer l'instance ODH:
+
+    oc create namespace odh-test
+
+ Dans la console OKD, sélectionner le projet odh-test, aller dans le menu Installed Operator -> Open Data Hub Operator -> KfDef et cliquer create instance. On peut utiliser les valeurs par défaut.
+
+#### Droits admin pour l'utilisateur kubeadmin
+
+Pour que l'utilisateur Kubeadmin puisse accéder aux interfaces d'administration de ODH, on doit créer le groupe odh-admins
+
+    od appy -f odh/odh-admins-manifest-yaml
 
 # Opérations
 
@@ -1115,6 +1195,7 @@ Vérifier la progression de la mise à jour:
     oc get clusterversion
     NAME      VERSION                         AVAILABLE   PROGRESSING   SINCE   STATUS
     version   4.7.0-0.okd-2021-06-04-191031   True        True          19m     Working towards 4.7.0-0.okd-2021-06-19-191547: 115 of 670 done (17% complete)
+
 ## Gestion des noeuds
 
 ### Ajouter des noeuds de travail (worker nodes)
@@ -1314,521 +1395,6 @@ Après quelques minutes, le noeud devrait être de nouveau Ready:
     kube06   Ready    worker   4m1s   v1.22.3+4dd1b5a
     kube07   Ready    worker   12d    v1.22.3+4dd1b5a
     kube08   Ready    worker   58m    v1.22.3+4dd1b5a
-
-
-## Authentification au registres d'images
-
-On utilise les crédentiels qu'on a dans notre fichier .docker/config.json
-https://docs.openshift.com/container-platform/4.8/openshift_images/managing_images/using-image-pull-secrets.html
-
-    oc create secret generic docker-secret --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson
-    oc secrets link default docker-secret --for=pull
-
-Pour ajouter le secret à la config globale:
-Obtenir la liste des secret de la config:
-
-    oc get secret/pull-secret -n openshift-config --template='{{index .data ".dockerconfigjson" | base64decode}}' > globalpullsecret
-
-Ajouter le crédentiel docker.io au fichier globalpullsecret
-
-    oc registry login --registry=docker.io --auth-basic="$(jq -r '.auths."https://index.docker.io/v1/".auth' ~/.docker/config.json | base64 -d)" --to=globalpullsecret
-
-Mettre à jour la configuration globale:
-
-    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=globalpullsecret
-
-## Stockage
-
-Chaque noeuds possède du stockage local. Pour faciliter son utilisation, on installe des approvisionneurs de stockage.
-
-### OpenEBS
-Le stockage local des noeuds est géré avec OpenEBS: https://docs.openebs.io/docs.
-Ce type de stockage n'est, en général, pas redondant. Les StatefulSet qui utilisent ce stockage doivent donc être redontant.
-
-### Création des groupes de volumes pour OpenEBS
-
-Dans cette preuve de concept, nous utilisons LVM pour gérer les disques qui hébergent les données du cluster.
-
-La première étape est de créer un groupe de disque virtuel avec les disques suppémentaires. Dans les machines de la preuves de concept, chaque noeud est équipé d'un deuxième disque à plateau SATA /dev/sdb. Pour ce type de disque, on créé le groupe de disque virtuel slowvg.
-
-    ssh -i keys/kubelacave-key core@kube01.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube02.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube03.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate slowvg /dev/sdb"
-    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate slowvg /dev/sdb"
-
-Les noeuds kube05, kube06 et kube07 ont des disques SSD dans /dev/sdc Pour les disques SSD:
-
-    ssh -i keys/kubelacave-key core@kube05.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i keys/kubelacave-key core@kube06.lacave.info "sudo vgcreate fastvg /dev/sda5"
-    ssh -i keys/kubelacave-key core@kube07.lacave.info "sudo vgcreate fastvg /dev/sda5"
-
-#### Instasllation avec OperatorHub
-Installation par OperatorHub
-
-Pré-requis:
-
-    Configure the OpenEBS service account on the openshift-operators namespace/project to use the privileged security context constraint.
-
-    Note: The serviceaccount name is same as the one specified in the spec.serviceAccount.name field of the OpenEBSInstallTemplate CR.
-
-    oc adm policy add-scc-to-user privileged system:serviceaccount:openshift-operators:openebs-maya-operator
-
-    Configure the default service account on the namespace/project in which the volume replicas are deployed to use privileged security context constraint.
-
-    oc adm policy add-scc-to-user privileged system:serviceaccount:openshift-operators:default
-
-Aller dans OperatorHub, rechercher OpenEBS.
-Cliquer sur Install
-Laisser les valeurs par défaut:
-
-    update channel: alpha
-    All namespace.
-    Déployer dans le namespace openshift-operators
-
-#### Installer lvm-operator
-
-    kubectl apply -f https://openebs.github.io/charts/lvm-operator.yaml
-    
-L'opérateur lvm s'installe dans le namespace kube-system
-
-La documentation pour LVM: https://github.com/openebs/lvm-localpv
-
-On créé ensuite 2 classes de stockage pour gérer le stockage rapide de type SSD et lent de type SATA de amnière différente.
-Voici les classes à créer
-
-    openebs-lvm-localpv-fast: openebs/storage-class-fast.yaml
-    openebs-lvm-localpv-slow: openebs/storage-class-slow.yaml
-
-Pour les appliquer:
-
-    kubectl create -f openebs/storage-class-fast.yaml
-    kubectl create -f openebs/storage-class-slow.yaml
-
-Pour tester, on peut déployer les pods exemples inclus dans le projet.
-
-    kubectl create -f openebs/exemple-stockage.yaml
-
-On peut les supprimer avec la commande suivante:
-
-    kubectl delete -f openebs/exemple-stockage.yaml
-
-Ca peut prendre quelques secondes/minutes, le temps que le provisioner retire les volumes logiques de sur les hôtes.
-
-Dans mon cas, j'ai du faire les étapes décrites dans l'issue https://github.com/openebs/openebs/issues/3046
-
-#### Mettre à jour lvm-operator
-
-La documentation pour la mise à jour est disponible à l'adresse suivante: https://github.com/openebs/lvm-localpv/tree/develop/upgrade
-
-
-### NFS
-On peut utiliser un stockage NFS externe pour provisionner des volumes.
-Voici une recette pour configurer une classe de stockage et provisionneur NFS.
-
-    https://dzone.com/articles/dynamic-nfs-provisioning-in-red-hat-openshift
-
-Ayant déjà un serveur NFS sur le réseau de lacave, on a alors a créer un nouveau partage pour qu'il soit utilisé par le cluster.
-Voici les étapes:
-
-    Créer le volume lvkubernetes et lui assigner de l'espace suffisiant pour tout les volumes du cluster qui utiliseront la classe NFS.
-    Monter le volume dans /kubernetes/volumes
-    L'ajouter dans /etc/exports
-    Redémarrer le service nfs-server
-    Tester si le partage est accessible
-    Créer les rôles et le compte de service sur le cluster
-    Créer la classe de stockage
-    Créer le provisionneur
-    Tester en créant un pvc et pod qui utilise ce volume
-
-Les volumes provisionnées se retrouvent dans un sous-répertoire de /kubernetes/volumes sur le serveur NFS.
-
-### Minio
-On a pas utilisé minio dans la POC
-
-Installer le gestionnaire de plugin krew pour kubectl:
-
-    (set -x; cd "$(mktemp -d)" &&   OS="$(uname | tr '[:upper:]' '[:lower:]')" &&   ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" &&   curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/krew.tar.gz" &&   tar zxvf krew.tar.gz &&   KREW=./krew-"${OS}_${ARCH}" &&   "$KREW" install krew;)
-
-Installer le plugin minio
-
-    kubectl krew install minio
-
-Créer le projet minio-operator
-
-    oc new-project minio-operator --description="Minio Storage Operator" --display-name="Minio Operator"
-
-Configurer la sécurité: https://github.com/minio/operator/issues/289
-
-    oc adm policy add-scc-to-user anyuid -z minio-operator -n minio-operator
-
-Déployer l'opérateur:
-
-    kubectl minio init -n minio-operator
-
-Accéder à la console:
-
-   kubectl minio proxy -n minio-operator
-
-L'adresse de la console est affiché lors du lancement du proxy.
-
-Créer la classe de stockage et les volumnes persistants
-
-    kubectl apply -f minio/miniostorage.yaml
-
-Création d'un tenant
-
-    Créer le namespace pour le tenant:
-        oc new-project minio-tenant --description="Minio Storage Tenant" --display-name="Minio Tenant"
-    Créer le Tenant
-        kubectl minio tenant create minio-tenant --servers 3 --volumes 6 --capacity 600Gi --storage-class minio-local-storage --namespace minio-tenant
-    Créer un proxy pour accéder à la console du tenant:
-        kubectl port-forward svc/minio-tenant-console -n minio-tenant 9443:9443
-    On peut accéder à la console par l'URL https://localhost:9443
-    Obtenir le crédentiel pour s'authentifier à la console:
-        echo $(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_ACCESS_KEY}' | base64 -d):$(oc get secret minio-tenant-console-secret -n minio-tenant -o jsonpath='{.data.CONSOLE_SECRET_KEY}' | base64 -d)
-
-
-## Mise à jour du cluster
-Voici les étapes pour la mise à jour du cluster: https://docs.okd.io/latest/updating/updating-cluster-cli.html
-
-J'ai été obligé de modifier la configuration de l'opérateur de mises à jour avec la commande suivante: https://gitmemory.com/issue/openshift/okd/674/857717204
-
-    oc patch clusterversion/version --patch '{"spec":{"upstream":"https://amd64.origin.releases.ci.openshift.org/graph"}}' --type=merge
-
-
-Obtenir la liste des mises à jour disponible pour le cluster
-
-    oc adm upgrade
-    Cluster version is 4.7.0-0.okd-2021-06-04-191031
-
-    Updates:
-
-    VERSION                       IMAGE
-    4.7.0-0.okd-2021-06-13-090745 registry.ci.openshift.org/origin/release@sha256:ab372d72a365b970193bc3369f6eecfd3d63a5d71c24edd263743b263c053155
-    4.7.0-0.okd-2021-06-19-191547 registry.ci.openshift.org/origin/release@sha256:a6a71ae89dc9e171fecc2fb93d6a02f9bdd720cd4ca93c1de0b0c5575c12c907
-
-Lancer la mise à jour:
-
-    oc adm upgrade --to-latest=true
-    Updating to latest version 4.7.0-0.okd-2021-06-19-191547
-
-    {
-    "channel": "stable-4",
-    "clusterID": "76d5234b-76bc-4964-8c88-35b54b21b36e",
-    "desiredUpdate": {
-        "force": false,
-        "image": "registry.ci.openshift.org/origin/release@sha256:a6a71ae89dc9e171fecc2fb93d6a02f9bdd720cd4ca93c1de0b0c5575c12c907",
-        "version": "4.7.0-0.okd-2021-06-19-191547"
-    },
-    "upstream": "https://amd64.origin.releases.ci.openshift.org/graph"
-    }
-
-Vérifier la progression de la mise à jour:
-
-    oc get clusterversion
-    NAME      VERSION                         AVAILABLE   PROGRESSING   SINCE   STATUS
-    version   4.7.0-0.okd-2021-06-04-191031   True        True          19m     Working towards 4.7.0-0.okd-2021-06-19-191547: 115 of 670 done (17% complete)
-
-
-## Ansible
-
-Plusieurs étapes de la configuration du cluster se font en utilisant Ansible et la collection de modules community.kubernetes
-
-Il faut utiliser Ansible 2.10 ou plus.
-Certains playbook utilisent des secriet chiffrés, bien s'assurer d'avoir le bon fichier de mot de passe /etc/ansible/passfile
-
-Le première étape est d'installer les pré-requis:
-
-    ansible-galaxy install collection -r requiremets.yml
-
-L'inventaire Ansible de ce projet est dans le répertoire suivant:
-
-    inventory/okd-lacave
-
-## Gestion des certificats
-
-### Installation cert-manager
-Cert Manager est disponible dans OperatorHub.
-Pour l'installer, suivre les étapes suivantes:
-
-    Créer le namespace cert-manager:
-        kubectl create namespace cert-manager
-    Dans la console OKD, dans la barre de navigation de gauche, sélectionner Operators -> OperatorHub.
-    Dans la boite de recherche écrire cert-manager
-    Cliquer sur l'icône de cert-manager et cliquer sur le bouton Continue pour l'avertissement Community Operator.
-    Cliquer Install.
-    Utiliser les paramètres suivants et cliquer sur Install:
-        Update channel: stable
-        Installation mode: All namespaces on the cluster
-        Installed Namespace: openshift-operator
-        Update approval: Automatic
-
-### Création de l'autorité de certification Self Signed
-La création du clusterissuer pour lacave se fait avec Ansible.
-On doit lancer le playbook à partir de la machine qui contient les fichiers de l'autorité de certification incluant le certificat root-ca et la clé.
-
-    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts cert/deploy_ca_cert.yml
-
-### Ajouter le ca dans python
-
-Pour ajouter les certificats CA de OKD et le self signed dans Python3 faire les commandes suivantes: (à ajouter au plyabook)
-
-    python3 -m pip install certifi
-    cat router-ca.pem | sudo tee -a $(python3 -m certifi)
-    cat root-ca.crt | sudo tee -a $(python3 -m certifi)
-
-En fait le but c'est d'ajouter les ca dans le fichier de certificats de confiance de Python installé par le module certifi.
-
-### Configuration des registres d'images
-
-Pour utiliser un registre d'image dont le certificat SSL a été emis avec le root ca de Lacave, on doit créer ConfigMap qui contient le ca de chacun des registres de confiance et l'ajouter à la configuraiton du cluster.
-Ces étapes ont été automatisé dans le playbook registry/config_registries.yml
-
-La liste des certificats est dans l'inventaire Ansible
-
-Exécuter le playbook avec la commande suivantes:
-
-    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/okd-lacave/hosts -e manifest_dest=/tmp registry/config_registries.yml
-
-## Journalisation
-
-On utilise Elasticsearch, Kibana et Beats pour récolter les journaux du cluster Kubernetes.
-
-### Elastic Cloud on Kubernetes
-Pour déployer Elasticsearch on utilise l'opérateur ECK.
-
-On le déploie avec Ansible:
-
-    ansible-playbook -i inventory/okd-lacave/hosts eck/deploy_operator.yml
-
-Pour obtenir le mot de passe de l'utilisateur elastic:
-
-    kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
-
-## Monitoring
-OKD install la suite Prometheus, Alert Manager, Thanos et Grafana par défaut dans le namespace openshift-monitoring.
-Lors de l'installation initiale, il n'y a pas de configuration spécifiques pour le Monitoring. 
-Pour configrurer la pile de Monitoring, on créé des ConfigMaps qui seront pris en charge par l'opérateur j'imagine.
-Une des première configuration à apporter est la configuration du stockage car les données de Prometheus, de AlertManager et de Thanos sont perdus a chaque fois que les pods son recréés.
-Pour appliquer le ConfigMap pour le stockage, exécuter le manifest suivant:
-
-    oc apply -f monitoring/config-manifest.yaml
-
-Ce manifest configure les paramêtres suivant:
-    Prometheus et AlertManager utilisent la classe de stockage de type SATA. 
-    La rétention des données de Prometheus est configuré à 7 jours.
-    La surveillance des projets définis par les utilisateurs est activée.
-
-Il n'est pas possible de créer nos propres tableaux de bords avec l'instance par défaut de Grafana.
-Voir article RedHat: https://access.redhat.com/solutions/4543031
-On doit donc installer l'opérateur Grafana qui permettera l'installation d'instance de grafana qui pourront être personnalisé pour chacun des projets.
-
-Avant d'installer l'opérateur, on doit créer le namespace grafana-operator
-
-    kubectl create namespace grafana-operator
-
-J'ai installé l'opérateur en utilisant la console web: 
-    Operators -> OperatorHub 
-    rechercher Grafana
-    Sélectionner Grafana Operator
-    Install
-    Update channel: v4
-    Installation Mode: A specific namespace on the cluster
-    Installed namespace: grafana-operator
-    Update approval: Automatic
-    Install
-
-Pour pouvoir accéder à Prometheus, on doit créer un nouvel utilisateur/mot de passe dans le secret prometheus-k8s-htpasswd:
-Voici les étapes:
-    Pour Ubuntu, on doit installer le package apache2-utils:
-        sudo apt install apache2-utils
-    Obtenir le fichier htpasswd du secret:
-        oc get secret prometheus-k8s-htpasswd -n openshift-monitoring -o jsonpath='{.data.auth}' | base64 -d > prometheus.htpasswd
-    Ajouter une ligne vide au fichier
-        echo >> prometheus.htpasswd
-    Ajouter un nouvel utilisateur dans le fichier:
-        htpasswd -s -b prometheus.htpasswd grafana-client LeMotDePasse
-    Mettre à jour le secret:
-        oc patch secret prometheus-k8s-htpasswd -p "{\"data\":{\"auth\":\"$(base64 -w0 prometheus.htpasswd)\"}}" -n openshift-monitoring
-    Redémarrer les pods Grafana
-        oc delete pod -l app=prometheus -n openshift-monitoring
-
-
-    
-
-# Gestion des bases de données
-
-On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
-
-## Oprateur Postgresql Crunchy Data
-
-Utiliser cet opérateur pour la création de cluster PostgreSQL. Fonctionne très bien avec Openshift et OKD. Les nouvelles versions utilisent des CRD pour la gestion des clusters.
-
-L'opérateur s'installe à partir du OperatorHub de OKD et Openshift.
-
-
-## Virtualisation
-Il est possible de coordonner et de gérer l'exécutions de machine virtuelle KVM avec Kubernetes en utilisant Kubevirt.
-
-### Kubevirt Hyper Converged Cluster Operator
-Cet opérateur permet le de gérer des opérateurs de divers type. On l'utilise pour gérer Kubevirt, Conterized Data Importer (CDI), le Virtual Machine Import operator et le cluster network address (CNA) operator.
-
-Pour intaller cet opérateur, utiliser le menu Opertaorts -> OperatorHub de la console, rechercher kubevirt et sélectionner KubeVirt HyperConverged Cluster Operator.
-Entrer les paramètres suivants et cliquer install pour le déployer:
-
-    Update chanenel: stable
-    Installation Mode: All namespaces
-    Installed namespace: kubevirt-hyperconverged
-    Update Approval: Automatic
-
-
-Une fois l'opérateur installé, aller dans Operators -> Installed Operators, sélectionner le projet kubevirt-hyperconverged et cliquer sur KubeVirt HyperConverged Cluster Operator.
-
-Dans l'onglet HyperConverged Cluster Operator Deployment, cliquer sur le bouton Create HyperConverged.
-Entrer les paramètres suivants:
-    Name: kubevirt-hyperconverged
-    Local Storage Class Name: openebs-lvm-localpv-fast
-
-Ajouter les paramètres accessMode et volumeMode pour les profils des classe de stockage utilisés par Kubevirt:
-
-	oc patch storageprofile openebs-lvm-localpv-slow --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
-	oc patch storageprofile openebs-lvm-localpv-fast --type=merge -p '{"spec": {"claimPropertySets": [{"accessModes": ["ReadWriteOnce"], "volumeMode": "Filesystem"}]}}'
-
-On peut suivre le déploiement des pods dans le namespace kubervirt-hyperconverged:
-
-    kubectl get pods -n kubevirt-hyperconverged
-
-Une fois le déploiement terminé, un nouvel item Virtualization est ajouté dans le menu Workloads de la console Web.
-Dans l'onglet Templates de ce menu, on peut voir que plusieurs gabarits ont été créés par l'opérateur.
-Aucun de ces gabarits ne vient avec des sources de système d'exploitation cependant.
-On peut ajouter des source pour chacune. Dans monc cas, j'ai ajouté un source au gabartit CentOS 8.0+ VM.
-Pour se faire:
-    Cliquer sur ce gabarit.
-    Dans la section Boot source, cliquer sur Add source.
-    Dans Boot source type, sélectionner Import via URL.
-    Dans import URL, mettre l'URL de la source à importer. Dans le ce cas de Centos 8, j'ai utilisé l'image de lURL suivant que est en format qcow2:
-        https://cloud.centos.org/centos/8-stream/x86_64/images/CentOS-Stream-GenericCloud-8-20210603.0.x86_64.qcow2
-    Dans Persistent Volume Claim size, laisser 20 Gib pour Centos
-    Dans Source provider, mettre Centos ou autre nom nous permettant d'identifier la source.
-    Cliquer Advanced Storage settings.
-    Dans Storage Class, sélectionner openebs-lvm-localpv-slow
-    Cliquer Save And Import.
-
-## Kafka
-
-Pour déployer des serveurs Kafka sur Kubernetes, on utilise l'opérateur Strimzi
-
-### Déployer l'opérateur Strimzi
-
-Pour déployer l'oprateur Strimzi, on peut utiliser Operator Hub.
-
-Dans la console OKD, aller dans le menu Operators -> OperatorHub.
-Dans le champ de recherche, écrire strimzi et cliquer sur la tuile Strimzi.
-Show community Operator, cliquer sur Continue
-Cliquer ensuite sur Install et utiliser les paramètres suivants:
-    Update Channel: stable
-    Installation Mode: All namespaces
-    Installed Namepsace: openshift-operators
-    Update approval: Automatic
-Cliquer sur le bouton Install
-
-Une fois l'opérateur déployé, on peut déployer un cluster de tests en utilisant le manifest strimzi/example-cluster-kafka.yaml
-
-    oc apply -f strimzi/example-cluster-kafka.yaml
-
-Cette configuration expose le cluster Kafka sur tous les hôtes du cluster Kubernetes sur les ports 31092, 31093 et 31094
-On peut le tester en utilisant Kafkacat:
-
-    echo test1 | kafkacat -b kube06.lacave.info:31092,kube07.lacave.info:31093,kube08.lacave.info:31094 -P -t test
-    kafkacat -b kube06.lacave.info:31092,kube07.lacave.info:31093,kube08.lacave.info:31094 -C -t test -o beginning
-    
-Pour le supprimer:
-
-    oc delete -f strimzi/example-cluster-kafka.yaml
-
-    
-## Observability
-
-On déploie l'opérateur Jaeger pour recueillir les données d'observabilités des applications. Jaeger permet de recueillir plusieurs métriques permettant d'observer le comportment des applications et aider à identifier des poinds de contentions.
-
-### Opérateur Jaeger
-
-Pour déployer l'oprateur Jaeger, on peut utiliser Operator Hub.
-
-Dans la console OKD, aller dans le menu Operators -> OperatorHub.
-Dans le champ Filter by keyword..., écrire Jaeger et cliquer sur la tuile Community Jaeger Operator.
-Show community Operator, cliquer sur Continue
-Cliquer ensuite sur Install.
-Utiliser les paramètres suivants:
-    Update Channel: stable
-    Installation Mode: All namespaces
-    Installed Namepsace: openshift-operators
-    Update approval: Automatic
-Cliquer sur le bouton Install
-
-## Tekton
-Pipelines GitOps pour Kubernetes.
-
-### Tekton sans opérateur
-
-Voici la recette pour déployer les pipelines tekton sans opérateur avec le correctif qui enlève les runAsUser pour Openshift:
-
-    curl -s https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml|sed '/runAs/d'|kubectl apply -f-
-
-Référence: https://github.com/tektoncd/website/pull/511
-
-Installation des triggers:
-
-    curl -s https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml|sed '/runAs/d'|kubectl apply -f-
-
-Installation du Dashboard
-
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
-
-### Opérateur Tekton
-
-Source: https://github.com/tektoncd/operator/blob/main/docs/install.md
-Cet opérateur permet la gestion des pipelines Tekton. On peut l'installer avec la commande suivante:
-
-    kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
-
-Pour installer les composants, lancer la commande suivante:
-
-    kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
-
-Pour le moment, les composants ne démarrent pas:
-
-    pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
-
-### Open Data Hub (ODH)
-
-Opérateur pour ML
-Utiliser la console pour déployer l'opérateur Open Data Hub. J'ai utilisé le canal stable.
-
-Une fois l'opérateur installé, créer un namespace pour déployer l'instance ODH:
-
-    oc create namespace odh-test
-
- Dans la console OKD, sélectionner le projet odh-test, aller dans le menu Installed Operator -> Open Data Hub Operator -> KfDef et cliquer create instance. On peut utiliser les valeurs par défaut.
-
-#### Droits admin pour l'utilisateur kubeadmin
-
-Pour que l'utilisateur Kubeadmin puisse accéder aux interfaces d'administration de ODH, on doit créer le groupe odh-admins
-
-    od appy -f odh/odh-admins-manifest-yaml
-
-### Installation des tâches Tekton
-On peut déployer des tâches qui peuvent être incluses dans les pipelines Tekton
-
-Tâche pour la commande git: https://hub.tekton.dev/tekton/task/git-cli
-
-    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-cli/0.4/git-cli.yaml
-
-Tâche pour Maven: https://hub.tekton.dev/tekton/task/maven
-
-    kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/maven/0.2/maven.yaml
 
 # Problèmes et solutions
 
