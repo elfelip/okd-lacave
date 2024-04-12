@@ -133,8 +133,9 @@ Fichiers FCOS
     sudo cp data/* /srv/tftp
 
 Fichiers pxelinux
-    sudo cp /boot/pxelinux.0 /srv/tftp
-    sudo cp /boot/ldlinux.c32 /srv/tftp
+
+    sudo cp /usr/lib/PXELINUX/pxelinux.0 /srv/tftp
+    sudo cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /srv/tftp
 
 Créer les fichiers de configutations pxeboot pour les noeuds du cluster. Le nom du fichier de configuration pour chacun des noeuds doit correspondre à son adresse MAC préfixée de 1 (je ne sais pas pourquoi le 1)
 
