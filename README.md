@@ -215,6 +215,7 @@ La zone DNS lacave.info sera utilisé pour le cluster.
 La procédure d'installation de bind et de la création de la zone n'est pas encore incluse dans ce document: A venir.
 
 On a besoin des entrés suivantes:
+
 $ORIGIN lacave.info.
 $TTL 3600       ; 1 hour
 dns1                    A       192.168.1.10
