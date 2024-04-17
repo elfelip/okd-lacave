@@ -133,8 +133,9 @@ Fichiers FCOS
     sudo cp data/* /srv/tftp
 
 Fichiers pxelinux
-    sudo cp /boot/pxelinux.0 /srv/tftp
-    sudo cp /boot/ldlinux.c32 /srv/tftp
+
+    sudo cp /usr/lib/PXELINUX/pxelinux.0 /srv/tftp
+    sudo cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /srv/tftp
 
 Créer les fichiers de configutations pxeboot pour les noeuds du cluster. Le nom du fichier de configuration pour chacun des noeuds doit correspondre à son adresse MAC préfixée de 1 (je ne sais pas pourquoi le 1)
 
@@ -215,38 +216,39 @@ La zone DNS lacave.info sera utilisé pour le cluster.
 La procédure d'installation de bind et de la création de la zone n'est pas encore incluse dans ce document: A venir.
 
 On a besoin des entrés suivantes:
-$ORIGIN lacave.info.
-$TTL 3600       ; 1 hour
-dns1                    A       192.168.1.10
-lb                      A       192.168.1.10
-kube01                  A       192.168.1.21
-master0.kubelacave.kube CNAME   kube01.lacave.info.
-kube02                  A       192.168.1.22
-master1.kubelacave.kube CNAME   kube02.lacave.info.
-kube03                  A       192.168.1.23
-master2.kubelacave.kube CNAME   kube03.lacave.info.
-kube04                  A       192.168.1.24
-bootstrap.kubelacave.kube       CNAME   kube04.lacave.info.
-kube05                  A       192.168.1.25
-worker0.kubelacave.kube CNAME   kube05.lacave.info.
-kube06                  A       192.168.1.26
-worker1.kubelacave.kube CNAME   kube06.lacave.info.
-kube07                  A       192.168.1.27
-worker2.kubelacave.kube CNAME   kube07.lacave.info.
-kube08                  A       192.168.1.28
-worker3.kubelacave.kube CNAME   kube08.lacave.info.
-kube09                  A       192.168.1.29
-worker4.kubelacave.kube CNAME   kube09.lacave.info.
-kube10                  A       192.168.1.30
-worker5.kubelacave.kube CNAME   kube10.lacave.info.
-lb.kubelacave.kube      CNAME   lb.lacave.info.
 
-kube                    CNAME   lb.kubelacave.kube.lacave.info.
-api.kubelacave.kube     CNAME   lb.kubelacave.kube.lacave.info.
-api-int.kubelacave.kube CNAME   lb.kubelacave.kube.lacave.info.
-helper.kubelacave.kube  CNAME   lb.kubelacave.kube.lacave.info.
-*.kube                  CNAME   kube.lacave.info.
-*.kubelacave.kube       CNAME   kube.lacave.info.
+    $ORIGIN lacave.info.
+    $TTL 3600       ; 1 hour
+    dns1                    A       192.168.1.10
+    lb                      A       192.168.1.10
+    kube01                  A       192.168.1.21
+    master0.kubelacave.kube CNAME   kube01.lacave.info.
+    kube02                  A       192.168.1.22
+    master1.kubelacave.kube CNAME   kube02.lacave.info.
+    kube03                  A       192.168.1.23
+    master2.kubelacave.kube CNAME   kube03.lacave.info.
+    kube04                  A       192.168.1.24
+    bootstrap.kubelacave.kube       CNAME   kube04.lacave.info.
+    kube05                  A       192.168.1.25
+    worker0.kubelacave.kube CNAME   kube05.lacave.info.
+    kube06                  A       192.168.1.26
+    worker1.kubelacave.kube CNAME   kube06.lacave.info.
+    kube07                  A       192.168.1.27
+    worker2.kubelacave.kube CNAME   kube07.lacave.info.
+    kube08                  A       192.168.1.28
+    worker3.kubelacave.kube CNAME   kube08.lacave.info.
+    kube09                  A       192.168.1.29
+    worker4.kubelacave.kube CNAME   kube09.lacave.info.
+    kube10                  A       192.168.1.30
+    worker5.kubelacave.kube CNAME   kube10.lacave.info.
+    lb.kubelacave.kube      CNAME   lb.lacave.info.
+
+    kube                    CNAME   lb.kubelacave.kube.lacave.info.
+    api.kubelacave.kube     CNAME   lb.kubelacave.kube.lacave.info.
+    api-int.kubelacave.kube CNAME   lb.kubelacave.kube.lacave.info.
+    helper.kubelacave.kube  CNAME   lb.kubelacave.kube.lacave.info.
+    *.kube                  CNAME   kube.lacave.info.
+    *.kubelacave.kube       CNAME   kube.lacave.info.
 
 Les entrés helper.kubelacave.kube, api.kubelacave.kube et api.kubelacave.kube doivent résoudre vers l'adresse du bootstrap lors de l'installation initiale dans la cas ou il n'y a pas de load balancer.
 Un fois le cluster démarré, on doit changer la destination pour master0.kubelacave.kube.lacave.info.
