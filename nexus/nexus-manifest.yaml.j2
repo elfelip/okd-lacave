@@ -137,23 +137,23 @@ spec:
             - name: nexus-data
               mountPath: /nexus-data
 {% if nexus_resources is defined and nexus_resources is not none %}
-        resources:
+          resources:
 {% if nexus_resources.requests is defined %}
-          requests:
+            requests:
 {% if nexus_resources.requests.memory is defined %}
-            memory: "{{ nexus_resources.requests.memory }}"
+              memory: "{{ nexus_resources.requests.memory }}"
 {% endif %}
 {% if nexus_resources.requests.cpu is defined %}
-            cpu: "{{ nexus_resources.requests.cpu }}"
+              cpu: "{{ nexus_resources.requests.cpu }}"
 {% endif %}
 {% endif %}
 {% if nexus_resources.limits is defined %}
-          limits:
+            limits:
 {% if nexus_resources.limits.memory is defined %}
-            memory: "{{ nexus_resources.limits.memory }}"
+              memory: "{{ nexus_resources.limits.memory }}"
 {% endif %}
 {% if nexus_resources.limits.cpu is defined %}
-            cpu: "{{ nexus_resources.limits.cpu }}"
+              cpu: "{{ nexus_resources.limits.cpu }}"
 {% endif %}
 {% endif %}
 {% endif %}
