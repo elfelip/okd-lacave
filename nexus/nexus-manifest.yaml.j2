@@ -110,7 +110,7 @@ spec:
             - /bin/sh
             - '-c'
             - >
-              chown -R 200:200 /nexus-data
+              chown 200:200 /nexus-data
           resources: {}
           volumeMounts:
             - name: nexus-data
@@ -136,6 +136,28 @@ spec:
           volumeMounts:
             - name: nexus-data
               mountPath: /nexus-data
+{% if nexus_resources is defined and nexus_resources is not none %}
+        resources:
+{% if nexus_resources.requests is defined %}
+          requests:
+{% if nexus_resources.requests.memory is defined %}
+            memory: "{{ nexus_resources.requests.memory }}"
+{% endif %}
+{% if nexus_resources.requests.cpu is defined %}
+            cpu: "{{ nexus_resources.requests.cpu }}"
+{% endif %}
+{% endif %}
+{% if nexus_resources.limits is defined %}
+          limits:
+{% if nexus_resources.limits.memory is defined %}
+            memory: "{{ nexus_resources.limits.memory }}"
+{% endif %}
+{% if nexus_resources.limits.cpu is defined %}
+            cpu: "{{ nexus_resources.limits.cpu }}"
+{% endif %}
+{% endif %}
+{% endif %}
+
 ---
     apiVersion: v1
     kind: Service
