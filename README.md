@@ -968,11 +968,11 @@ Voici les étapes:
         oc delete pod -l app=prometheus -n openshift-monitoring
 
 
-# Gestion des bases de données
+## Gestion des bases de données
 
 On va utiliser quelques outils pour faciliter les gestion des instances de bases de données.
 
-## Oprateur Postgresql Crunchy Data
+### Oprateur Postgresql Crunchy Data
 
 Utiliser cet opérateur pour la création de cluster PostgreSQL. Fonctionne très bien avec Openshift et OKD. Les nouvelles versions utilisent des CRD pour la gestion des clusters.
 
@@ -1060,6 +1060,20 @@ Pour le supprimer:
 ## Observability
 
 On déploie l'opérateur Jaeger pour recueillir les données d'observabilités des applications. Jaeger permet de recueillir plusieurs métriques permettant d'observer le comportment des applications et aider à identifier des poinds de contentions.
+### Opérateur OpenTelemetry
+
+Pour déployer l'oprateur OpenTelemetry, on peut utiliser Operator Hub.
+
+Dans la console OKD, aller dans le menu Operators -> OperatorHub.
+Dans le champ Filter by keyword..., écrire OpenTelementry et cliquer sur la tuile Community OpenTelemetry Operator.
+Show community Operator, cliquer sur Continue
+Cliquer ensuite sur Install.
+Utiliser les paramètres suivants:
+    Update Channel: stable
+    Installation Mode: All namespaces
+    Installed Namepsace: openshift-operators
+    Update approval: Automatic
+Cliquer sur le bouton Install
 
 ### Opérateur Jaeger
 
@@ -1128,6 +1142,7 @@ Pour le moment, les composants ne démarrent pas:
     pods "tekton-pipelines-controller-5944464fc-" is forbidden: unable to validate against any security context constraint: [pod.metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: Forbidden: seccomp may not be set, pod.metadata.annotations[container.seccomp.security.alpha.kubernetes.io/tekton-pipelines-controller]: Forbidden: seccomp may not be set, spec.containers[0].securityContext.runAsUser: Invalid value: 65532: must be in the ranges: [1000940000, 1000949999], provider "containerized-data-importer": Forbidden: not usable by user or serviceaccount, provider "nonroot-v2": Forbidden: not usable by user or serviceaccount, provider "nonroot": Forbidden: not usable by user or serviceaccount, provider
 
 ### Installation des tâches Tekton
+
 On peut déployer des tâches qui peuvent être incluses dans les pipelines Tekton
 
 Tâche pour la commande git: https://hub.tekton.dev/tekton/task/git-cli
@@ -1138,7 +1153,7 @@ Tâche pour Maven: https://hub.tekton.dev/tekton/task/maven
 
     kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/maven/0.2/maven.yaml
 
-### Open Data Hub (ODH)
+## Open Data Hub (ODH)
 
 Opérateur pour ML
 Utiliser la console pour déployer l'opérateur Open Data Hub. J'ai utilisé le canal stable.
@@ -1149,7 +1164,7 @@ Une fois l'opérateur installé, créer un namespace pour déployer l'instance O
 
  Dans la console OKD, sélectionner le projet odh-test, aller dans le menu Installed Operator -> Open Data Hub Operator -> KfDef et cliquer create instance. On peut utiliser les valeurs par défaut.
 
-#### Droits admin pour l'utilisateur kubeadmin
+### Droits admin pour l'utilisateur kubeadmin
 
 Pour que l'utilisateur Kubeadmin puisse accéder aux interfaces d'administration de ODH, on doit créer le groupe odh-admins
 

@@ -1,7 +1,8 @@
 nexus_repository_url: "nexus.{{ kube_routes_domain }}"
 nexus_docker_repository_url: "docker.{{ kube_routes_domain }}"
 nexus_node_label: "kubernetes.io/hostname: kube09"
-nexus_storage_size: 600Gi
+nexus_storage_class: openebs-lvm-localpv-slow
+nexus_storage_size: 700Gi
 nexus_admin_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
           66663563346233646531396233353334343933323336613630313666656336343930356336626662
