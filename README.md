@@ -450,29 +450,30 @@ Aller sur le site https://cloud.redhat.com/openshift/install/pull-secret
 Récupérer le secret soit en téléchargeant ou en faisant un copier du secret.
 
 Le fichier install-config.yaml ressemble à ceci:
-apiVersion: v1
-baseDomain: kube.lacave.info
-compute: 
-- hyperthreading: Enabled 
-  name: worker
-  replicas: 0 
-controlPlane: 
-  hyperthreading: Enabled 
-  name: master
-  replicas: 3 
-metadata:
-  name: kubelacave
-networking:
-  clusterNetwork:
-  - cidr: 10.128.0.0/14 
-    hostPrefix: 23 
-  networkType: OVNKubernetes
-  serviceNetwork: 
-  - 172.30.0.0/16
-platform:
-  none: {} 
-pullSecret: 'Mettre le pull secret récupéré du site Openshift'
-sshKey: 'Mettre le contenu du fichier keys/kubelacave-key.pub'
+
+    apiVersion: v1
+    baseDomain: kube.lacave.info
+    compute: 
+      - name: worker
+        hyperthreading: Enabled 
+        replicas: 6
+    controlPlane:
+      name: master
+      hyperthreading: Enabled 
+      replicas: 3 
+    metadata:
+      name: kubelacave
+    networking:
+      clusterNetwork:
+        - cidr: 10.128.0.0/14 
+          hostPrefix: 23 
+      networkType: OVNKubernetes
+      serviceNetwork: 
+        - 172.30.0.0/16
+    platform:
+      none: {} 
+    pullSecret: 'Mettre le pull secret récupéré du site Openshift'
+    sshKey: 'Mettre le contenu du fichier keys/kubelacave-key.pub'
 
 Créer le répertoire pour les manifest:
 
