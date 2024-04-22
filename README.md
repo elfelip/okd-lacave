@@ -645,6 +645,14 @@ Le mot de passe de l'utilisateur kubeadmin est dans le fichier ~/okd/manifest/au
 ## Déploiement des noeuds de travail (worker nodes)
 Une fois les master en place et les cluster operators bien déployés, on peut déployer les autre noeuds.
 Il suffit d'allumer les machines et les noeuds vont s'ajouter automatiquement au cluster.
+Le déploiement de nouveaux noeuds génére des demande de signature de certificats pour les comptes de service ainsi que pourt les noeud. Tant que ces demandes ne sont pas accepté, le noeud ne peuvent se connecter au cluster.
+Pour accepter les demandes de certificat, utiliser la commande suivante:
+
+    oc adm certificate approve $(oc get csr | grep Pending | awk '{print $1}')
+
+Les noeuds devraient alors se joindre au cluster:
+
+    oc get nodes
 
 # Configration du cluster
 Un fois le cluster installé, il y a quelques composants complémentaires à y ajouter avant de pouvoir installer des applications.
