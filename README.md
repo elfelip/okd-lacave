@@ -90,23 +90,23 @@ Paramètres généraux
 
 Section pour le sous-réseau. La seule ligne ajoutée pour le pxe dans cette section est option bootfile-name
 
-subnet 192.168.1.0 netmask 255.255.255.0 {
-  range 192.168.1.100 192.168.1.200;
-  option domain-name "lacave";
-  option domain-name-servers 192.168.1.10;
-  option routers 192.168.1.1;
-  default-lease-time 600;
-  max-lease-time 7200;
-  option bootfile-name "/pxelinux.0";
-  site-option-space "pxelinux";
-  option pxelinux.magic f1:00:74:7e;
-  if exists dhcp-parameter-request-list {
-    # Always send the PXELINUX options (specified in hexadecimal)
-    option dhcp-parameter-request-list = concat(option dhcp-parameter-request-list,d0,d1,d2,d3);
-  }
-  option pxelinux.configfile = concat("pxelinux.cfg/", binary-to-ascii(16, 8, ":", hardware));
-  option pxelinux.reboottime 30;
-}
+	subnet 192.168.1.0 netmask 255.255.255.0 {
+	  range 192.168.1.100 192.168.1.200;
+	  option domain-name "lacave";
+	  option domain-name-servers 192.168.1.10;
+	  option routers 192.168.1.1;
+	  default-lease-time 600;
+	  max-lease-time 7200;
+	  option bootfile-name "/pxelinux.0";
+	  site-option-space "pxelinux";
+	  option pxelinux.magic f1:00:74:7e;
+	  if exists dhcp-parameter-request-list {
+	    # Always send the PXELINUX options (specified in hexadecimal)
+	    option dhcp-parameter-request-list = concat(option dhcp-parameter-request-list,d0,d1,d2,d3);
+	  }
+	  option pxelinux.configfile = concat("pxelinux.cfg/", binary-to-ascii(16, 8, ":", hardware));
+	  option pxelinux.reboottime 30;
+	}
 
 Redémarrer le service dhcp
 
